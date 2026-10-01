@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Easy Cal tests</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 16px; background: #0d0a14; color: #f7f2ff; font: 14px/1.45 ui-monospace, Consolas, monospace; }
+  h1 { font: 800 20px/1.2 system-ui, sans-serif; margin: 0 0 12px; }
+  #summary { padding: 10px 12px; margin-bottom: 12px; font-weight: 700; }
+  #summary.pass { background: #12301f; color: #7cf29a; }
+  #summary.fail { background: #3a1020; color: #ff8fa8; }
+  .r { padding: 2px 0; }
+  .r.fail { color: #ff8fa8; white-space: pre-wrap; }
+  .r.pass { color: #a69cbc; }
+</style>
+</head>
+<body>
+<h1>Easy Cal core tests</h1>
+<div id="summary">Running…</div>
+<div id="results"></div>
+<script>
+  // a tiny harness: test(name, fn) + eq / ok assertions, results on window.__results
+  const TESTS = [];
+  function test(name, fn) { TESTS.push({ name, fn }); }
+  function show(v) { return JSON.stringify(v); }
+  function eq(actual, expected, msg) {
+    if (show(actual) !== show(expected)) {
+      throw new Error(`${msg ? msg + ': ' : ''}expected ${show(expected)}, got ${show(actual)}`);
+    }
+  }
+  function ok(cond, msg) { if (!cond) throw new Error(msg || 'expected truthy'); }
+</script>
+<script src="../core.js"></script>
+<script src="core.test.js"></script>
+<script>
+  (function run() {
+    const out = { pass: 0, fail: 0, failures: [] };
+    const box = document.getElementById('results');
+    for (const t of TESTS) {
+      const row = document.createElement('div');
+      try {
+        t.fn();
+        out.pass++;
+        row.className = 'r pass';
+        row.textContent = `✓ ${t.name}`;
+      } catch (e) {
+        out.fail++;
+        out.failures.push(`${t.name}: ${e.message}`);
+        row.className = 'r fail';
+        row.textContent = `✗ ${t.name}\n    ${e.message}`;
+      }
+      box.appendChild(row);
+    }
+    const sum = document.getElementById('summary');
+    sum.className = out.fail ? 'fail' : 'pass';
+    sum.textContent = `${out.fail ? 'FAIL' : 'PASS'} · ${out.pass} passed · ${out.fail} failed`;
+    window.__results = out;
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,3168 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0a14">
+<meta name="description" content="A calm day planner: one thing at a time, a timeline you can see, and a focus timer.">
+<title>Easy Cal</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Easy Cal: the calm sibling of Mission Board. Same night city, same type and
+   palette, but nothing here shouts. One "right now" card, a day you can see,
+   and every calendar view tucked underneath. Nothing late ever turns red. */
+:root {
+  color-scheme: dark;
+  --night: #0d0a14;
+  --asphalt: #16111f;
+  --asphalt-hi: #1f1830;
+  --line: rgba(236, 222, 255, 0.10);
+  --ink: #f7f2ff;
+  --smog: #a69cbc;
+  --dim: #9088a8;
+  --shade: #05040a;
+  --neon: #ff3d7f;
+  --flare: #ff9b3d;
+  --gold: #ffd166;
+  --palm: #2ee6c8;
+  --cash: #7cf29a;
+  --dusk: #9a6bff;
+  --dusk-ink: #c2a8ff;
+  --font-display: "Big Shoulders Display", "Anton", Impact, "Arial Narrow Bold", sans-serif;
+  --font-hud: "Barlow Condensed", "Roboto Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --glide: cubic-bezier(.2, .8, .2, 1);
+  --cut: 14px;
+  --hour: 88px;
+  --lane: 58px;
+  --t: var(--dusk-ink);
+  --t-bg: rgba(154, 107, 255, .16);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; background: var(--night); scroll-padding-top: calc(76px + env(safe-area-inset-top, 0px)); }
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--night);
+  color: var(--ink);
+  font: 500 16px/1.45 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(110% 55% at 85% -10%, rgba(255, 61, 127, .14), transparent 60%),
+    radial-gradient(80% 45% at -10% 0%, rgba(110, 60, 255, .13), transparent 60%),
+    radial-gradient(70% 40% at 50% 110%, rgba(46, 230, 200, .06), transparent 70%);
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--palm); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+svg { display: block; flex: none; }
+
+/* one colour per type; everything that shows an item reads --t / --t-bg */
+[data-type="personal"] { --t: var(--dusk-ink); --t-bg: rgba(154, 107, 255, .16); }
+[data-type="appointment"] { --t: var(--palm); --t-bg: rgba(46, 230, 200, .12); }
+[data-type="health"] { --t: var(--cash); --t-bg: rgba(124, 242, 154, .12); }
+[data-type="task"] { --t: var(--gold); --t-bg: rgba(255, 209, 102, .12); }
+[data-type="adventure"] { --t: var(--flare); --t-bg: rgba(255, 155, 61, .13); }
+
+/* ── HUD ─────────────────────────────────────────────────────────────── */
+.hud {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: rgba(13, 10, 20, .88);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.hud-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.clock { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+.clock-time { font: 900 34px/1 var(--font-display); letter-spacing: .01em; font-variant-numeric: tabular-nums; }
+.clock-time small { font: 800 15px/1 var(--font-hud); letter-spacing: .08em; margin-left: 2px; color: var(--smog); text-transform: uppercase; }
+.clock-day { font: 700 13px/1 var(--font-hud); letter-spacing: .16em; text-transform: uppercase; color: var(--smog); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-actions { display: flex; gap: 8px; flex: none; }
+.icon-btn {
+  min-width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: rgba(255, 255, 255, .04);
+  color: var(--ink);
+  font: 800 15px/1 var(--font-hud);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.icon-btn svg { width: 22px; height: 22px; }
+.icon-btn:hover { border-color: rgba(255, 255, 255, .34); }
+.icon-btn--focus { border-color: rgba(255, 61, 127, .55); color: var(--neon); }
+.icon-btn--focus.is-live { background: var(--neon); color: var(--shade); border-color: var(--neon); font-variant-numeric: tabular-nums; }
+.icon-btn--new { background: var(--neon); border-color: var(--neon); color: var(--shade); }
+.icon-btn--new:hover { filter: brightness(1.08); }
+
+/* ── page ────────────────────────────────────────────────────────────── */
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 16px 16px calc(40px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* hero postcard: the sky is painted on canvas and follows the real time of day */
+.hero {
+  position: relative;
+  isolation: isolate;
+  min-height: 168px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 4px;
+  overflow: hidden;
+  background: #2a1448;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%);
+}
+.hero-sky { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; display: block; }
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(8, 6, 14, .7) 0%, rgba(8, 6, 14, .2) 55%, transparent 80%),
+    linear-gradient(0deg, rgba(8, 6, 14, .55), transparent 60%);
+}
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  background: rgba(5, 4, 10, .55);
+  border: 1px solid rgba(255, 255, 255, .14);
+  font: 700 12px/1 var(--font-hud);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.hero-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--palm); box-shadow: 0 0 8px var(--palm); }
+.hero h1 {
+  margin: 8px 0 0;
+  font: 900 clamp(48px, 9vw, 96px)/.8 var(--font-display);
+  letter-spacing: .005em;
+  text-transform: uppercase;
+  transform: skewX(-7deg);
+  transform-origin: left bottom;
+  filter: drop-shadow(0 4px 0 rgba(5, 4, 10, .9));
+}
+.hero h1 .grad {
+  background: linear-gradient(100deg, var(--neon) 10%, var(--flare) 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-tag {
+  margin: 8px 0 0;
+  font: 600 17px/1.35 var(--font-body);
+  color: rgba(247, 242, 255, .92);
+  max-width: 36ch;
+  text-shadow: 0 1px 8px rgba(5, 4, 10, .8);
+}
+
+/* the layout: one column on phones, a main column + side rail on desktop */
+.layout { display: flex; flex-direction: column; gap: 16px; }
+.rail { display: contents; }
+#now { order: 1; }
+#add { order: 2; }
+#strip { order: 3; }
+#tasks { order: 4; }
+#slipped { order: 5; }
+#cal { order: 6; }
+@media (min-width: 980px) {
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-rows: auto auto 1fr;
+    align-items: start;
+  }
+  .rail { display: flex; flex-direction: column; gap: 16px; grid-column: 2; grid-row: 1 / span 3; min-width: 0; }
+  #now { grid-column: 1; grid-row: 1; }
+  #strip { grid-column: 1; grid-row: 2; }
+  #cal { grid-column: 1; grid-row: 3; }
+}
+
+/* ── shared pieces ───────────────────────────────────────────────────── */
+.panel {
+  position: relative;
+  min-width: 0;
+  background: var(--asphalt);
+  border: 1px solid var(--line);
+  padding: 18px;
+  scroll-margin-top: 76px;
+}
+.panel-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 14px;
+}
+.panel-title {
+  margin: 0;
+  font: 900 30px/.9 var(--font-display);
+  letter-spacing: .01em;
+  text-transform: uppercase;
+}
+.kicker {
+  display: block;
+  font: 800 12px/1.1 var(--font-hud);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--smog);
+}
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+  background: rgba(255, 255, 255, .1);
+  font: 800 15px/1 var(--font-hud);
+  letter-spacing: 0;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  background: rgba(255, 255, 255, .04);
+  color: var(--ink);
+  font: 800 15px/1 var(--font-hud);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: transform .12s, border-color .15s, background-color .15s, filter .15s;
+}
+.btn svg { width: 18px; height: 18px; }
+.btn:hover { border-color: rgba(255, 255, 255, .36); }
+.btn:active { transform: translateY(1px) scale(.98); }
+.btn--primary {
+  border: 0;
+  background: var(--neon);
+  color: var(--shade);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%);
+  padding: 0 18px 0 16px;
+}
+.btn--primary:hover { filter: brightness(1.08); }
+/* the cut corner clips an outside outline, so the focus ring goes inside */
+.btn--primary:focus-visible { outline: none; box-shadow: inset 0 0 0 3px var(--shade), inset 0 0 0 5px var(--ink); }
+.btn--done { border-color: rgba(46, 230, 200, .6); color: var(--palm); background: rgba(46, 230, 200, .07); }
+.btn--gold { border-color: rgba(255, 209, 102, .55); color: var(--gold); background: rgba(255, 209, 102, .06); }
+.btn--dusk { border-color: rgba(154, 107, 255, .6); color: var(--dusk-ink); background: rgba(154, 107, 255, .07); }
+.btn--ghost { border-color: transparent; background: transparent; color: var(--smog); }
+.btn--ghost:hover { color: var(--ink); border-color: rgba(255, 255, 255, .18); }
+.btn--small { min-height: 44px; padding: 0 12px; font-size: 13px; }
+.btn--small.btn--primary { padding: 0 14px 0 12px; }
+.btn[disabled] { opacity: .45; cursor: default; }
+.check {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(46, 230, 200, .6);
+  background: rgba(46, 230, 200, .07);
+  color: var(--palm);
+  transition: background .15s, color .15s, transform .12s;
+}
+.check svg { width: 20px; height: 20px; opacity: .3; transition: opacity .15s; }
+.check:hover svg, .check:focus-visible svg { opacity: 1; }
+.check:active { transform: scale(.9); }
+.check.is-on { background: var(--palm); color: var(--shade); }
+.check.is-on svg { opacity: 1; }
+.mini {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .03);
+  color: var(--smog);
+}
+.mini svg { width: 18px; height: 18px; }
+.mini:hover { color: var(--ink); border-color: rgba(255, 255, 255, .3); }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font: 700 12px/1 var(--font-hud);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.chip--type { color: var(--t); background: var(--t-bg); border-color: transparent; }
+.chip--title { text-transform: none; letter-spacing: .01em; font: 700 14px/1 var(--font-body); }
+
+/* ── right now ───────────────────────────────────────────────────────── */
+.now {
+  min-height: 300px;
+  padding: 22px 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+  border-left: 4px solid var(--t);
+  background:
+    radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--t) 10%, transparent), transparent 60%),
+    var(--asphalt);
+}
+.now[data-mode="clear"] { --t: var(--palm); --t-bg: rgba(46, 230, 200, .12); }
+.now[data-mode="pick"] { --t: var(--neon); --t-bg: rgba(255, 61, 127, .12); }
+.now-kicker {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font: 800 14px/1 var(--font-hud);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--t);
+}
+.now-kicker .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--t);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--t) 22%, transparent);
+  animation: breathe 2.4s ease-in-out infinite;
+}
+@keyframes breathe { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--t) 8%, transparent); } }
+.now-title {
+  margin: 0;
+  font: 900 clamp(42px, 6.2vw, 76px)/.88 var(--font-display);
+  letter-spacing: .005em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.now-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font: 700 13px/1.2 var(--font-hud);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--smog);
+}
+.now-meta .tag { color: var(--t); }
+.now-sub { margin: 0; max-width: 48ch; color: var(--smog); font: 500 17px/1.45 var(--font-body); }
+.now-count { font: 900 clamp(30px, 4vw, 42px)/1 var(--font-display); letter-spacing: .01em; text-transform: uppercase; color: var(--t); }
+.now-bar { position: relative; height: 12px; background: rgba(255, 255, 255, .07); overflow: hidden; }
+.now-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--t) 70%, transparent), var(--t));
+  transition: width 1s linear;
+}
+.now-leave {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 209, 102, .5);
+  background: rgba(255, 209, 102, .07);
+  color: var(--gold);
+  font: 800 15px/1 var(--font-hud);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.now-leave svg { width: 18px; height: 18px; }
+.now-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.now-after {
+  margin: auto 0 0;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+  color: var(--smog);
+  font: 600 15px/1.35 var(--font-body);
+}
+.now-after b { color: var(--ink); font-weight: 700; }
+.link-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gold);
+  font: 800 14px/1 var(--font-hud);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.link-btn svg { width: 18px; height: 18px; }
+.link-btn:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+/* ── quick add ───────────────────────────────────────────────────────── */
+.add-form { display: flex; }
+.add-input {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  padding: 0 14px;
+  background: var(--asphalt-hi);
+  border: 1px solid var(--line);
+  border-right: 0;
+  border-radius: 0;
+  color: var(--ink);
+  font: 600 17px/1 var(--font-body);
+}
+.add-input::placeholder { color: var(--dim); }
+.add-input:focus { outline: none; border-color: var(--neon); }
+.add-input.is-nudge { animation: nudge .35s; }
+@keyframes nudge { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+.add-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 52px;
+  padding: 0 18px 0 14px;
+  border: 0;
+  background: var(--neon);
+  color: var(--shade);
+  font: 800 18px/1 var(--font-hud);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+}
+.add-btn svg { width: 20px; height: 20px; }
+.add-btn:hover { filter: brightness(1.08); }
+.add-btn:focus-visible { outline: none; box-shadow: inset 0 0 0 3px var(--ink); }
+.add-preview { min-height: 34px; margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.add-note { font: 600 14px/1.35 var(--font-body); color: var(--gold); }
+.add-hint { font: 500 14px/1.5 var(--font-body); color: var(--smog); }
+.ex {
+  min-height: 34px;
+  padding: 1px 8px;
+  border: 1px dashed rgba(255, 255, 255, .22);
+  background: none;
+  color: var(--ink);
+  font: 600 14px/1.5 var(--font-body);
+}
+.ex:hover { border-color: var(--neon); }
+.add-more {
+  margin-top: 2px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dusk-ink);
+  font: 800 13px/1 var(--font-hud);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* ── open tasks ──────────────────────────────────────────────────────── */
+.tasks-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.task {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 6px 5px 2px;
+  background: var(--asphalt-hi);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--t);
+}
+.task.is-picked { border-color: var(--neon); box-shadow: 0 0 0 1px var(--neon); }
+.grip {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dim);
+  cursor: grab;
+  touch-action: none;
+}
+.grip svg { width: 18px; height: 18px; }
+.grip:hover { color: var(--ink); }
+.task-body { min-width: 0; padding: 4px 2px; border: 0; background: none; text-align: left; }
+.task-title { display: block; font: 600 16px/1.25 var(--font-body); overflow-wrap: anywhere; }
+.task-meta { display: block; margin-top: 3px; font: 700 11px/1.1 var(--font-hud); letter-spacing: .1em; text-transform: uppercase; color: var(--smog); }
+.task-actions { display: flex; gap: 4px; align-items: center; }
+.tasks-done { margin: 12px 0 0; font: 700 13px/1.2 var(--font-hud); letter-spacing: .12em; text-transform: uppercase; color: var(--palm); }
+.empty { padding: 8px 2px; color: var(--smog); font: 500 15px/1.45 var(--font-body); }
+
+/* ── slipped by ──────────────────────────────────────────────────────── */
+.slipped {
+  border-color: rgba(154, 107, 255, .32);
+  background: linear-gradient(180deg, rgba(154, 107, 255, .08), transparent 70%), var(--asphalt);
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.slipped summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 52px;
+  cursor: pointer;
+  list-style: none;
+}
+.slipped summary::-webkit-details-marker { display: none; }
+.slipped summary b { display: block; margin-top: 4px; font: 900 22px/1 var(--font-display); text-transform: uppercase; }
+.slipped summary svg { width: 22px; height: 22px; color: var(--dusk-ink); transition: transform .2s; }
+.slipped details[open] summary svg { transform: rotate(180deg); }
+.slip-intro { margin: 0 0 6px; color: var(--smog); font-size: 15px; }
+.slip-list { list-style: none; margin: 0; padding: 0; }
+.slip { padding: 12px 0; border-top: 1px solid var(--line); }
+.slip-title { font: 600 16px/1.3 var(--font-body); overflow-wrap: anywhere; }
+.slip-when { margin-top: 2px; font: 700 11px/1.2 var(--font-hud); letter-spacing: .12em; text-transform: uppercase; color: var(--dusk-ink); }
+.slip-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.slip-all { margin: 4px 0 8px; }
+
+/* ── today strip ─────────────────────────────────────────────────────── */
+.strip-free { font: 800 14px/1.2 var(--font-hud); letter-spacing: .12em; text-transform: uppercase; color: var(--palm); }
+.anytime { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.anytime:empty { display: none; }
+.anytime-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-left: 3px solid var(--t);
+  background: var(--t-bg);
+  color: var(--ink);
+  font: 600 14px/1.2 var(--font-body);
+}
+.anytime-chip em { font: 800 11px/1 var(--font-hud); font-style: normal; letter-spacing: .12em; text-transform: uppercase; color: var(--t); }
+.anytime-chip.is-done span { text-decoration: line-through; opacity: .7; }
+.strip-scroll {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--line);
+  background: #120e1b;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, .2) transparent;
+}
+.strip-canvas { position: relative; height: calc(30px + var(--lanes, 1) * var(--lane) + 8px); }
+.strip-hour { position: absolute; top: 0; bottom: 0; z-index: 1; border-left: 1px solid rgba(255, 255, 255, .06); pointer-events: none; }
+.strip-hour span {
+  position: absolute;
+  top: 8px;
+  left: 6px;
+  font: 700 11px/1 var(--font-hud);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.strip-past { position: absolute; top: 0; bottom: 0; left: 0; background: rgba(5, 4, 10, .5); pointer-events: none; }
+.strip-gap {
+  position: absolute;
+  top: 30px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  overflow: hidden;
+  border: 1px dashed rgba(46, 230, 200, .3);
+  background: rgba(46, 230, 200, .03);
+  color: rgba(46, 230, 200, .8);
+  font: 700 11px/1.15 var(--font-hud);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.strip-gap:hover { background: rgba(46, 230, 200, .09); }
+.block {
+  position: absolute;
+  height: calc(var(--lane) - 6px);
+  padding: 6px 8px;
+  overflow: hidden;
+  border: 0;
+  border-left: 3px solid var(--t);
+  background: var(--t-bg);
+  color: var(--ink);
+  text-align: left;
+  z-index: 2;
+}
+.block b { display: block; font: 700 14px/1.15 var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.block span { display: block; margin-top: 3px; font: 700 11px/1.1 var(--font-hud); letter-spacing: .08em; text-transform: uppercase; color: var(--t); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.block:hover { filter: brightness(1.2); }
+.block.is-now { box-shadow: inset 0 0 0 2px var(--t); }
+.block.is-done { opacity: .5; }
+.block.is-done b { text-decoration: line-through; }
+.block.is-slipped { opacity: .75; border-left-style: dashed; }
+.strip-travel {
+  position: absolute;
+  height: calc(var(--lane) - 6px);
+  display: flex;
+  align-items: flex-end;
+  padding: 0 0 5px 5px;
+  overflow: hidden;
+  border-left: 1px dashed var(--t);
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--t) 22%, transparent) 0 5px, transparent 5px 10px);
+  color: var(--t);
+  font: 800 10px/1 var(--font-hud);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.strip-now { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--neon); box-shadow: 0 0 12px rgba(255, 61, 127, .7); pointer-events: none; z-index: 3; }
+.strip-now span {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  padding: 3px 5px;
+  background: var(--neon);
+  color: var(--shade);
+  font: 800 10px/1 var(--font-hud);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.strip-drop {
+  position: absolute;
+  top: 30px;
+  bottom: 8px;
+  z-index: 4;
+  display: flex;
+  align-items: flex-start;
+  padding: 6px;
+  border: 2px solid var(--neon);
+  background: rgba(255, 61, 127, .16);
+  color: var(--ink);
+  font: 800 12px/1 var(--font-hud);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.strip-hint { margin: 10px 0 0; color: var(--dim); font: 500 14px/1.4 var(--font-body); }
+.drag-ghost {
+  position: fixed;
+  z-index: 150;
+  max-width: 240px;
+  padding: 10px 14px;
+  border: 2px solid var(--neon);
+  background: var(--asphalt-hi);
+  color: var(--ink);
+  font: 700 15px/1.2 var(--font-body);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .6);
+  transform: translate(-50%, -130%) rotate(-2deg);
+}
+body.is-dragging { -webkit-user-select: none; user-select: none; cursor: grabbing; }
+body.is-dragging .strip-scroll { outline: 2px dashed rgba(255, 61, 127, .7); outline-offset: 3px; }
+
+/* ── calendar ────────────────────────────────────────────────────────── */
+.cal-top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; }
+.nav { display: flex; gap: 6px; }
+.nav .btn { min-width: 48px; padding: 0 12px; }
+.nav .btn.is-here { border-color: var(--neon); color: var(--neon); }
+.cal-label { border-left: 3px solid var(--neon); padding-left: 12px; min-width: 0; }
+.cal-label .kicker { color: var(--neon); }
+.cal-title { margin: 5px 0 0; font: 900 clamp(26px, 3.4vw, 38px)/.95 var(--font-display); text-transform: uppercase; }
+/* the calendar lays itself out by its own width, not the window's, because the
+   side rail makes it narrow on laptops */
+.cal { container: cal / inline-size; }
+.views {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  background: var(--line);
+}
+@container cal (min-width: 700px) { .views { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.view-btn {
+  position: relative;
+  min-height: 50px;
+  padding: 0 8px;
+  border: 0;
+  background: var(--asphalt);
+  color: var(--smog);
+  font: 800 15px/1 var(--font-hud);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.view-btn small { margin-right: 6px; color: var(--dim); font-size: 10px; }
+.view-btn:hover { color: var(--ink); }
+.view-btn[aria-pressed="true"] { color: var(--ink); background: color-mix(in srgb, var(--neon) 10%, var(--asphalt)); }
+.view-btn[aria-pressed="true"]::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: 0; height: 3px; background: var(--neon); }
+.cal-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+.seg { display: flex; border: 1px solid var(--line); }
+.seg button { min-height: 48px; padding: 6px 14px; border: 0; background: none; color: var(--ink); text-align: left; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg b, .switch b { display: block; font: 800 14px/1 var(--font-hud); letter-spacing: .12em; text-transform: uppercase; }
+.seg small, .switch small { display: block; margin-top: 4px; font: 500 12px/1.1 var(--font-body); color: var(--smog); }
+.seg button[aria-pressed="true"] { background: var(--palm); color: var(--shade); }
+.seg button[aria-pressed="true"] small { color: rgba(5, 4, 10, .72); }
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 4px 14px 4px 8px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--ink);
+  text-align: left;
+}
+.switch-track { position: relative; flex: none; width: 44px; height: 26px; border-radius: 13px; background: rgba(255, 255, 255, .12); transition: background .2s; }
+.switch-track::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--dusk-ink);
+  transition: transform .2s var(--glide), background .2s;
+}
+.switch[aria-checked="true"] .switch-track { background: rgba(124, 242, 154, .32); }
+.switch[aria-checked="true"] .switch-track::after { transform: translateX(18px); background: var(--cash); }
+.cal-count { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.cal-count strong { font: 900 36px/1 var(--font-display); color: var(--palm); }
+.cal-count span { font: 700 11px/1.15 var(--font-hud); letter-spacing: .12em; text-transform: uppercase; color: var(--smog); }
+.cal-body { margin-top: 16px; }
+
+.month-head { margin: 20px 0 8px; font: 900 22px/1 var(--font-display); text-transform: uppercase; color: var(--dusk-ink); }
+.month-head:first-child { margin-top: 0; }
+.dg { display: grid; grid-template-columns: 86px minmax(0, 1fr); margin-bottom: 8px; border: 1px solid var(--line); background: rgba(31, 24, 48, .45); }
+.dg.is-today { border-color: var(--neon); box-shadow: inset 3px 0 0 var(--neon); }
+.dg.is-past { opacity: .85; }
+.dg-date {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: rgba(5, 4, 10, .35);
+  color: var(--ink);
+  text-align: left;
+}
+.dg-date:hover { background: rgba(255, 255, 255, .05); }
+.dg-wd { font: 800 11px/1 var(--font-hud); letter-spacing: .16em; text-transform: uppercase; color: var(--smog); }
+.is-today .dg-wd { color: var(--neon); }
+.dg-num { font: 900 42px/.9 var(--font-display); }
+.dg-mon { font: 700 11px/1 var(--font-hud); letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
+.dg-items { list-style: none; margin: 0; padding: 6px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ev {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 0;
+  border-left: 3px solid var(--t);
+  background: rgba(255, 255, 255, .025);
+}
+.ev-time { padding-left: 10px; font: 800 13px/1.15 var(--font-hud); letter-spacing: .08em; text-transform: uppercase; color: var(--t); }
+.ev-body { min-width: 0; padding: 6px 0; border: 0; background: none; text-align: left; color: var(--ink); }
+.ev-title { display: block; font: 700 16px/1.25 var(--font-body); overflow-wrap: anywhere; }
+.ev-meta { display: block; margin-top: 3px; font: 700 11px/1.2 var(--font-hud); letter-spacing: .1em; text-transform: uppercase; color: var(--smog); }
+.ev.is-done { opacity: .85; }
+.ev.is-done .ev-title { text-decoration: line-through; color: var(--smog); }
+.ev.is-slipped { opacity: .85; border-left-style: dashed; }
+.cal-empty { padding: 30px 18px; border: 1px dashed rgba(255, 255, 255, .14); text-align: center; color: var(--smog); }
+.cal-empty b { display: block; margin-bottom: 6px; font: 900 32px/1 var(--font-display); text-transform: uppercase; color: var(--ink); }
+.cal-empty-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+
+.cchip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 0;
+  border-left: 3px solid var(--t);
+  background: var(--t-bg);
+  color: var(--ink);
+  font: 600 13px/1.2 var(--font-body);
+  text-align: left;
+}
+.cchip em { flex: none; font: 800 11px/1 var(--font-hud); font-style: normal; letter-spacing: .06em; text-transform: uppercase; color: var(--t); }
+.cchip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cchip.is-done span { text-decoration: line-through; opacity: .7; }
+.cchip.is-slipped { opacity: .8; border-left-style: dashed; }
+.cchip:hover { filter: brightness(1.2); }
+
+.hours { border: 1px solid var(--line); }
+.hr { display: grid; grid-template-columns: 76px minmax(0, 1fr); min-height: 48px; border-bottom: 1px solid var(--line); }
+.hr:last-child { border-bottom: 0; }
+.hr-label { padding: 10px; border-right: 1px solid var(--line); font: 800 12px/1 var(--font-hud); letter-spacing: .1em; text-transform: uppercase; color: var(--smog); }
+.hr-items { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px; min-width: 0; }
+.hr-items .cchip { width: auto; max-width: 100%; }
+.hr.is-empty .hr-label { color: var(--dim); }
+.hr.is-now { box-shadow: inset 3px 0 0 var(--neon); }
+.hr.is-now .hr-label { color: var(--neon); }
+.hr.is-past { opacity: .8; }
+.hr-add {
+  flex: 1;
+  min-width: 60px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: transparent;
+  font: 700 12px/1 var(--font-hud);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  text-align: left;
+}
+.hr-add:hover, .hr-add:focus-visible { color: var(--smog); }
+.hr--any .hr-label { color: var(--gold); }
+
+/* week: a row per day when narrow, seven columns when there's room */
+.week { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.wk { display: flex; min-width: 0; min-height: 52px; border: 1px solid var(--line); }
+.wk-head {
+  flex: none;
+  width: 74px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: rgba(5, 4, 10, .35);
+  color: var(--ink);
+  text-align: left;
+}
+.wk-head b { font: 900 26px/1 var(--font-display); }
+.wk-head span { font: 800 11px/1 var(--font-hud); letter-spacing: .14em; text-transform: uppercase; color: var(--smog); }
+.wk-items { display: flex; flex-wrap: wrap; align-content: center; gap: 4px; padding: 6px; flex: 1; min-width: 0; }
+.wk-items .cchip { width: auto; max-width: 100%; }
+@container cal (min-width: 760px) {
+  .week { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .wk { flex-direction: column; min-height: 120px; }
+  .wk-head { width: auto; flex-direction: row; align-items: baseline; justify-content: flex-start; border-right: 0; border-bottom: 1px solid var(--line); }
+  .wk-items { flex-direction: column; flex-wrap: nowrap; align-content: stretch; }
+  .wk-items .cchip { width: 100%; }
+}
+.wk-free { font: 700 11px/1 var(--font-hud); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); padding: 6px 2px; }
+.wk.is-today { border-color: var(--neon); }
+.wk.is-today .wk-head span { color: var(--neon); }
+.wk.is-past { opacity: .8; }
+.wk.is-empty .wk-head b { color: var(--smog); }
+
+.months { display: grid; gap: 22px; }
+.mg-title { margin: 0 0 8px; font: 900 24px/1 var(--font-display); text-transform: uppercase; }
+.mg-title span { color: var(--dim); }
+.mg-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.mg-wd { padding: 7px 6px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); font: 800 11px/1 var(--font-hud); letter-spacing: .14em; text-transform: uppercase; color: var(--smog); }
+.mc { display: flex; flex-direction: column; gap: 3px; min-width: 0; min-height: 98px; padding: 4px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.mc-num { align-self: flex-end; min-width: 32px; min-height: 30px; padding: 4px 6px; border: 0; background: none; color: var(--ink); font: 800 17px/1 var(--font-display); }
+.mc-num:hover { background: rgba(255, 255, 255, .07); }
+.mc.is-empty .mc-num { color: var(--smog); }
+.mc .cchip { min-height: 24px; padding: 2px 5px; font-size: 12px; }
+.mc-more { min-height: 28px; padding: 2px 4px; border: 0; background: none; color: var(--smog); font: 700 11px/1.2 var(--font-hud); letter-spacing: .08em; text-transform: uppercase; text-align: left; }
+.mc.is-today { box-shadow: inset 0 0 0 2px var(--neon); }
+.mc.is-today .mc-num { background: var(--neon); color: var(--shade); }
+.mc.is-past { background: rgba(5, 4, 10, .35); }
+.mc.is-past .mc-num { color: var(--dim); }
+.mc.is-blank { background: repeating-linear-gradient(135deg, transparent 0 8px, rgba(255, 255, 255, .015) 8px 16px); }
+/* a narrow month grid swaps titles for colour bars; tap the day to read them */
+@container cal (max-width: 560px) {
+  .mc { min-height: 58px; padding: 2px; }
+  .mc-num { font-size: 15px; min-width: 26px; padding: 4px; }
+  .mc .cchip { min-height: 7px; height: 7px; padding: 0; border-left-width: 0; background: var(--t); pointer-events: none; }
+  .mc .cchip em, .mc .cchip span { display: none; }
+  .mc-more { font-size: 10px; padding: 0 2px; }
+  .mg-wd { padding: 6px 2px; text-align: center; letter-spacing: .04em; }
+}
+
+.year { display: grid; grid-template-columns: repeat(auto-fill, minmax(212px, 1fr)); gap: 12px; }
+.ym { padding: 10px; border: 1px solid var(--line); }
+.ym.is-now { border-color: rgba(255, 61, 127, .5); }
+.ym-title { display: block; min-height: 44px; margin-bottom: 2px; padding: 0; border: 0; background: none; color: var(--ink); font: 900 20px/1 var(--font-display); text-transform: uppercase; }
+.ym-title:hover { color: var(--neon); }
+.ym-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.ym-wd { padding-bottom: 3px; font: 700 10px/1 var(--font-hud); text-align: center; color: var(--dim); }
+.yd { position: relative; aspect-ratio: 1; min-width: 24px; display: grid; place-items: center; padding: 0; border: 0; background: none; color: var(--smog); font: 700 12px/1 var(--font-hud); }
+.yd:hover { background: rgba(255, 255, 255, .08); color: var(--ink); }
+.yd.has { color: var(--ink); background: var(--t-bg); }
+.yd.has::after { content: ""; position: absolute; bottom: 2px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--t); }
+.yd.is-past { color: var(--dim); }
+.yd.is-today { background: var(--neon); color: var(--shade); }
+
+/* ── footer ──────────────────────────────────────────────────────────── */
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  background: var(--asphalt);
+}
+.sync-pill { font: 700 12px/1.2 var(--font-hud); letter-spacing: .14em; text-transform: uppercase; color: var(--dusk-ink); }
+.foot-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.warn { color: var(--gold); font: 600 14px/1.35 var(--font-body); }
+
+/* ── dialogs ─────────────────────────────────────────────────────────── */
+dialog.sheet {
+  width: min(580px, calc(100% - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: var(--asphalt);
+  color: var(--ink);
+  overflow: auto;
+}
+dialog::backdrop { background: rgba(5, 4, 10, .78); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.sheet-in { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
+.sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.sheet h2 { margin: 5px 0 0; font: 900 40px/.9 var(--font-display); text-transform: uppercase; }
+.sheet h3 { margin: 6px 0 0; font: 900 22px/1 var(--font-display); text-transform: uppercase; }
+.sheet p { margin: 0; color: var(--smog); }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field > span { font: 800 12px/1.2 var(--font-hud); letter-spacing: .16em; text-transform: uppercase; color: var(--smog); }
+.field small { font: 500 12px var(--font-body); letter-spacing: 0; text-transform: none; color: var(--dim); }
+.field input, .field select, .field textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--asphalt-hi);
+  color: var(--ink);
+  font: 600 16px/1.2 var(--font-body);
+  color-scheme: dark;
+}
+.field textarea { resize: vertical; min-height: 64px; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--neon); }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tick-row { display: flex; align-items: center; gap: 12px; min-height: 48px; font: 600 16px/1.3 var(--font-body); }
+.tick-row input { width: 22px; height: 22px; accent-color: var(--palm); }
+.form-err { min-height: 1em; margin: 0; color: var(--gold) !important; font: 600 14px/1.3 var(--font-body); }
+.sheet-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+.sheet-foot > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.sheet hr { width: 100%; margin: 4px 0; border: 0; border-top: 1px solid var(--line); }
+
+/* ── focus mode ──────────────────────────────────────────────────────── */
+dialog.focus {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background:
+    radial-gradient(80% 60% at 50% -10%, rgba(255, 61, 127, .16), transparent 70%),
+    radial-gradient(70% 50% at 50% 110%, rgba(46, 230, 200, .1), transparent 70%),
+    var(--night);
+  color: var(--ink);
+}
+dialog.focus[data-state="break"] {
+  background:
+    radial-gradient(80% 60% at 50% -10%, rgba(154, 107, 255, .2), transparent 70%),
+    radial-gradient(70% 50% at 50% 110%, rgba(46, 230, 200, .1), transparent 70%),
+    var(--night);
+}
+.focus-in {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: calc(64px + env(safe-area-inset-top, 0px)) 20px calc(28px + env(safe-area-inset-bottom, 0px));
+  text-align: center;
+}
+.focus-hide { position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); right: 14px; }
+.focus-kicker { color: var(--neon); font-size: 14px; }
+dialog.focus[data-state="break"] .focus-kicker { color: var(--dusk-ink); }
+dialog.focus[data-state="finished"] .focus-kicker { color: var(--cash); }
+.focus-title { margin: 0; max-width: 18ch; font: 900 clamp(34px, 7vw, 64px)/.9 var(--font-display); text-transform: uppercase; overflow-wrap: anywhere; }
+.focus-name {
+  width: min(420px, 100%);
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  background: var(--asphalt-hi);
+  color: var(--ink);
+  font: 600 17px/1 var(--font-body);
+  text-align: center;
+}
+.focus-name:focus { outline: none; border-color: var(--neon); }
+.ring { position: relative; width: min(290px, 68vw); aspect-ratio: 1; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 9; }
+.ring .track { stroke: rgba(255, 255, 255, .08); }
+.ring .prog { stroke: url(#ring-grad); stroke-linecap: round; transition: stroke-dashoffset .5s linear; }
+dialog.focus[data-state="break"] .ring .prog { stroke: var(--dusk); }
+dialog.focus[data-state="finished"] .ring .prog { stroke: var(--cash); }
+.ring-time { position: absolute; inset: 0; display: grid; place-items: center; font: 900 clamp(58px, 15vw, 92px)/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.focus-msg { min-height: 1.45em; max-width: 40ch; margin: 0; color: var(--smog); font: 600 18px/1.45 var(--font-body); }
+.presets { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; }
+.preset[aria-pressed="true"] { border-color: var(--neon); color: var(--neon); background: rgba(255, 61, 127, .08); }
+.preset-custom { display: inline-flex; align-items: center; gap: 6px; color: var(--smog); font: 700 13px/1 var(--font-hud); letter-spacing: .12em; text-transform: uppercase; }
+.preset-custom input { width: 72px; min-height: 44px; padding: 0 8px; border: 1px solid rgba(255, 255, 255, .18); background: var(--asphalt-hi); color: var(--ink); font: 700 16px/1 var(--font-body); text-align: center; color-scheme: dark; }
+.focus-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+
+/* ── toast ───────────────────────────────────────────────────────────── */
+/* a popover sits in the top layer, so the toast stays visible above an open dialog */
+.toast {
+  position: fixed;
+  inset: auto auto calc(18px + env(safe-area-inset-bottom, 0px)) 50%;
+  margin: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  overflow: visible;
+  padding: 8px 8px 8px 16px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-left: 4px solid var(--palm);
+  background: var(--asphalt-hi);
+  color: var(--ink);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .55);
+  font: 600 15px/1.3 var(--font-body);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 16px);
+  transition: opacity .25s var(--glide), transform .25s var(--glide);
+}
+.toast.is-on { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+.toast span { padding: 6px 0; }
+
+/* ── small screens ───────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  :root { --hour: 68px; --lane: 54px; }
+  .hud-inner { padding: 6px 12px; gap: 8px; }
+  .clock-time { font-size: 28px; }
+  .clock-day { font-size: 11px; letter-spacing: .12em; }
+  .icon-btn--new .lbl { display: none; }
+  .wrap { padding: 12px 12px calc(32px + env(safe-area-inset-bottom, 0px)); gap: 12px; }
+  .hero { min-height: 0; padding: 10px 12px 12px; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%); }
+  .hero-eyebrow { padding: 4px 7px; font-size: 10px; }
+  .hero h1 { margin-top: 6px; font-size: 40px; }
+  .hero-tag { display: none; }
+  .layout { gap: 12px; }
+  .panel { padding: 14px; }
+  .panel-title { font-size: 26px; }
+  .now { min-height: 0; padding: 16px 16px 14px; }
+  .now-title { font-size: 42px; }
+  .dg { grid-template-columns: 62px minmax(0, 1fr); }
+  .dg-date { padding: 8px; }
+  .dg-num { font-size: 32px; }
+  .ev { grid-template-columns: 64px minmax(0, 1fr) auto; gap: 6px; }
+  .ev-time { padding-left: 8px; font-size: 12px; }
+  .cal-count { margin-left: 0; }
+  .seg button { padding: 6px 10px; }
+  .view-btn { font-size: 14px; letter-spacing: .08em; }
+  .view-btn small { display: none; }
+  .sheet h2 { font-size: 34px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+<header class="hud">
+  <div class="hud-inner">
+    <div class="clock">
+      <span class="clock-time" id="clock-time">--:--</span>
+      <span class="clock-day" id="clock-day"></span>
+    </div>
+    <div class="hud-actions">
+      <button class="icon-btn" id="install-hud" type="button" data-icon="download" aria-label="Install Easy Cal as an app" title="Install app" hidden></button>
+      <button class="icon-btn icon-btn--focus" id="focus-hud" type="button" data-icon="timer" aria-label="Start a focus timer" title="Focus timer"></button>
+      <button class="icon-btn" id="settings-btn" type="button" data-icon="sliders" aria-label="Settings" title="Settings"></button>
+      <button class="icon-btn icon-btn--new" id="new-btn" type="button" data-icon="plus" aria-label="New event"><span class="lbl">New</span></button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero" aria-label="Easy Cal">
+    <canvas class="hero-sky" id="hero-sky" aria-hidden="true"></canvas>
+    <span class="hero-eyebrow"><span class="hero-dot" aria-hidden="true"></span><span id="hero-date"></span></span>
+    <h1>Easy <span class="grad">Cal</span></h1>
+    <p class="hero-tag">One thing at a time. The rest can wait.</p>
+  </section>
+
+  <div class="layout">
+    <section class="panel now" id="now" aria-label="Right now"></section>
+    <p class="sr-only" id="now-sr" aria-live="polite"></p>
+
+    <div class="rail">
+      <section class="panel add" id="add" aria-labelledby="add-title">
+        <div class="panel-head">
+          <h2 class="panel-title" id="add-title">Quick add</h2>
+          <span class="kicker">Type it how you'd say it</span>
+        </div>
+        <form class="add-form" id="add-form" autocomplete="off">
+          <label class="sr-only" for="add-input">What's happening? For example: dentist 3pm tomorrow</label>
+          <input class="add-input" id="add-input" type="text" maxlength="200" enterkeyhint="done" placeholder="dentist 3pm tomorrow" aria-describedby="add-preview">
+          <button class="add-btn" type="submit" data-icon="plus">Add</button>
+        </form>
+        <div class="add-preview" id="add-preview"></div>
+        <button class="add-more" type="button" id="add-more">More options</button>
+      </section>
+
+      <section class="panel tasks" id="tasks" aria-labelledby="tasks-title">
+        <div class="panel-head">
+          <h2 class="panel-title" id="tasks-title">Open tasks<span class="count" id="tasks-count">0</span></h2>
+          <button class="btn btn--small btn--gold" type="button" data-act="pick" data-icon="dice">Pick for me</button>
+        </div>
+        <ul class="tasks-list" id="tasks-list"></ul>
+        <p class="tasks-done" id="tasks-done" hidden></p>
+      </section>
+
+      <section class="panel slipped" id="slipped" aria-label="Slipped by" hidden></section>
+    </div>
+
+    <section class="panel strip" id="strip" aria-labelledby="strip-title">
+      <div class="panel-head">
+        <div>
+          <span class="kicker" id="strip-kicker">Today</span>
+          <h2 class="panel-title" id="strip-title">Your day</h2>
+        </div>
+        <span class="strip-free" id="strip-free"></span>
+      </div>
+      <div class="anytime" id="anytime"></div>
+      <div class="strip-scroll" id="strip-scroll" tabindex="0" role="group" aria-label="Today's timeline. Scroll sideways to see the whole day.">
+        <div class="strip-canvas" id="strip-canvas"></div>
+      </div>
+      <p class="strip-hint">Drag a task by its dots onto the timeline, or tap a dashed gap to put something there.</p>
+    </section>
+
+    <section class="panel cal" id="cal" aria-labelledby="cal-title">
+      <div class="cal-top">
+        <div class="nav">
+          <button class="btn" type="button" id="cal-prev" data-icon="left" aria-label="Previous"></button>
+          <button class="btn" type="button" id="cal-today">Today</button>
+          <button class="btn" type="button" id="cal-next" data-icon="right" aria-label="Next"></button>
+        </div>
+        <div class="cal-label">
+          <span class="kicker" id="cal-kicker">Day view</span>
+          <h2 class="cal-title" id="cal-title"></h2>
+        </div>
+      </div>
+      <div class="views" id="views" role="group" aria-label="Calendar view">
+        <button class="view-btn" type="button" data-view="day"><small>01</small>Day</button>
+        <button class="view-btn" type="button" data-view="week"><small>02</small>Week</button>
+        <button class="view-btn" type="button" data-view="month"><small>03</small>Full month</button>
+        <button class="view-btn" type="button" data-view="month2"><small>04</small>2 month</button>
+        <button class="view-btn" type="button" data-view="month3"><small>05</small>3 month</button>
+        <button class="view-btn" type="button" data-view="year"><small>06</small>Year</button>
+      </div>
+      <div class="cal-controls">
+        <div class="seg" role="group" aria-label="Which events to show">
+          <button type="button" data-filter="next"><b>Now + Next</b><small>Today and upcoming</small></button>
+          <button type="button" data-filter="all"><b>All events</b><small>Includes the past</small></button>
+        </div>
+        <button class="switch" type="button" id="full-toggle" role="switch" aria-checked="false" aria-label="Show full calendar">
+          <span class="switch-track" aria-hidden="true"></span>
+          <span><b>Show full calendar</b><small>See every day and date</small></span>
+        </button>
+        <div class="cal-count"><strong id="cal-count">0</strong><span id="cal-count-label">events<br>in range</span></div>
+      </div>
+      <div class="cal-body" id="cal-body"></div>
+    </section>
+  </div>
+
+  <footer class="foot">
+    <span class="sync-pill">Sync off · coming later</span>
+    <span class="warn" id="save-warn" hidden>This browser is blocking storage, so changes vanish when you close it.</span>
+    <div class="foot-actions">
+      <button class="btn btn--small" type="button" data-act="backup-save">Save backup</button>
+      <button class="btn btn--small" type="button" data-act="backup-merge">Merge backup</button>
+      <button class="btn btn--small btn--dusk" type="button" data-act="install" data-install hidden>Install app</button>
+    </div>
+  </footer>
+</main>
+
+<dialog class="sheet" id="sheet" aria-labelledby="sheet-title">
+  <form class="sheet-in" id="sheet-form" novalidate>
+    <div class="sheet-head">
+      <div>
+        <span class="kicker" id="sheet-kicker">Quick capture</span>
+        <h2 id="sheet-title">New event</h2>
+      </div>
+      <button class="icon-btn" type="button" data-close data-icon="close" aria-label="Close"></button>
+    </div>
+    <label class="field"><span>What's happening?</span><input name="title" maxlength="200" placeholder="Type the event name…"></label>
+    <div class="row">
+      <label class="field"><span>Date <small>leave empty for an open task</small></span><input type="date" name="date"></label>
+      <label class="field"><span>End date <small>optional, for trips</small></span><input type="date" name="endDate"></label>
+    </div>
+    <div class="row">
+      <label class="field"><span>Time <small>optional</small></span><input type="time" name="time" step="300"></label>
+      <label class="field"><span>Length</span><select name="durationMin"></select></label>
+      <label class="field"><span>Travel <small>before</small></span><select name="travelMin"></select></label>
+    </div>
+    <label class="field"><span>Type</span><select name="type"></select></label>
+    <label class="field"><span>Notes <small>optional</small></span><textarea name="notes" rows="2" maxlength="2000"></textarea></label>
+    <p class="form-err" id="sheet-err" role="alert"></p>
+    <div class="sheet-foot">
+      <div>
+        <button class="btn btn--small btn--ghost" type="button" id="sheet-delete">Delete</button>
+        <button class="btn btn--small btn--done" type="button" id="sheet-done">Mark done</button>
+      </div>
+      <div>
+        <button class="btn" type="button" data-close>Cancel</button>
+        <button class="btn btn--primary" type="submit">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="sheet" id="settings" aria-labelledby="settings-title">
+  <form class="sheet-in" id="settings-form" novalidate>
+    <div class="sheet-head">
+      <div>
+        <span class="kicker">Make it yours</span>
+        <h2 id="settings-title">Settings</h2>
+      </div>
+      <button class="icon-btn" type="button" data-close data-icon="close" aria-label="Close"></button>
+    </div>
+    <div class="row">
+      <label class="field"><span>Clock</span>
+        <select name="clock24"><option value="false">12-hour (3pm)</option><option value="true">24-hour (15:00)</option></select>
+      </label>
+      <label class="field"><span>Week starts on</span>
+        <select name="weekStart"><option value="1">Monday</option><option value="0">Sunday</option></select>
+      </label>
+    </div>
+    <div class="row">
+      <label class="field"><span>Default length</span><select name="defaultDuration"></select></label>
+      <label class="field"><span>Focus timer</span><select name="focusMin"></select></label>
+    </div>
+    <label class="tick-row"><input type="checkbox" name="sound"> Soft chime when a focus session ends</label>
+    <hr>
+    <h3>Your data</h3>
+    <p>Everything stays on this device. Signing in to sync, like the todo app, is coming later. A backup file keeps you safe in the meantime.</p>
+    <div class="foot-actions">
+      <button class="btn btn--small" type="button" data-act="backup-save">Save backup</button>
+      <button class="btn btn--small" type="button" data-act="backup-merge">Merge backup</button>
+      <button class="btn btn--small btn--dusk" type="button" data-act="install" data-install hidden>Install app</button>
+      <button class="btn btn--small btn--ghost" type="button" id="clear-all">Clear everything</button>
+    </div>
+    <div class="sheet-foot">
+      <span></span>
+      <div><button class="btn btn--primary" type="button" data-close>Done</button></div>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="focus" id="focus" aria-labelledby="focus-title">
+  <div class="focus-in">
+    <button class="icon-btn focus-hide" type="button" id="focus-hide" data-icon="down" aria-label="Hide the timer. It keeps running." title="Hide (keeps running)"></button>
+    <span class="kicker focus-kicker" id="focus-kicker">Focus mode</span>
+    <h2 class="focus-title" id="focus-title">Just focus</h2>
+    <label class="sr-only" for="focus-name">What are you working on?</label>
+    <input class="focus-name" id="focus-name" maxlength="120" placeholder="What are you working on? (optional)">
+    <div class="ring">
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <defs>
+          <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ff3d7f"/>
+            <stop offset="1" stop-color="#ff9b3d"/>
+          </linearGradient>
+        </defs>
+        <circle class="track" cx="60" cy="60" r="52"/>
+        <circle class="prog" id="ring-prog" cx="60" cy="60" r="52"/>
+      </svg>
+      <div class="ring-time" id="ring-time" role="timer" aria-live="off">25:00</div>
+    </div>
+    <p class="sr-only" id="focus-sr" aria-live="polite"></p>
+    <p class="focus-msg" id="focus-msg"></p>
+    <div class="presets" id="presets">
+      <button class="btn preset" type="button" data-min="10">10 min</button>
+      <button class="btn preset" type="button" data-min="25">25 min</button>
+      <button class="btn preset" type="button" data-min="45">45 min</button>
+      <label class="preset-custom">Or <input type="number" id="preset-custom" min="1" max="180" inputmode="numeric" aria-label="Custom minutes"> min</label>
+    </div>
+    <div class="focus-actions" id="focus-actions"></div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" popover="manual" role="status" aria-live="polite"></div>
+<input type="file" id="merge-file" accept="application/json,.json" hidden>
+
+<script src="core.js"></script>
+<script>
+(() => {
+  'use strict';
+  const C = window.EasyCore;
+  const $ = (id) => document.getElementById(id);
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (ch) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const BASE_TITLE = document.title;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  // ── clock ("?now=2026-10-01T15:00" pins it, for testing) ───────────────
+  const params = new URLSearchParams(location.search);
+  const pinned = Date.parse(params.get('now') || '');
+  const OFFSET = Number.isFinite(pinned) ? pinned - Date.now() : 0;
+  const now = () => Date.now() + OFFSET;
+  const todayISO = () => C.toISO(new Date(now()));
+  const nowMin = () => C.minutesOfDay(new Date(now()));
+
+  // ── storage + store ────────────────────────────────────────────────────
+  let storage = null;
+  try {
+    localStorage.setItem('__easycal_probe', '1');
+    localStorage.removeItem('__easycal_probe');
+    storage = localStorage;
+  } catch (e) { storage = null; }
+  const STORE_KEY = 'easycal.v1';
+  const store = C.createStore({ storage, key: STORE_KEY, now });
+  const S = () => store.settings();
+
+  if (!store.meta('seeded')) {
+    if (!store.all().length) {
+      store.add({ title: 'Drag me onto today’s timeline by my dots', durationMin: 30 });
+      store.add({ title: 'Tap “Pick for me” when you can’t decide', durationMin: 15 });
+      store.add({ title: 'Try quick add: “coffee 4pm tomorrow”', durationMin: 15 });
+    }
+    store.setMeta('seeded', true);
+  }
+
+  const ui = {
+    anchor: todayISO(),
+    today: todayISO(),
+    pickId: null,
+    anyIdx: 0,
+    drag: null,
+    stripPlaced: false,
+    sheetId: null,
+  };
+
+  // ── icons ──────────────────────────────────────────────────────────────
+  const ICONS = {
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    play: '<path d="M8 5.5v13l10-6.5z" fill="currentColor" stroke="none"/>',
+    pause: '<path d="M8 5v14M16 5v14"/>',
+    timer: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M9.5 2.5h5"/>',
+    sliders: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+    download: '<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/>',
+    grip: '<g fill="currentColor" stroke="none"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></g>',
+    slot: '<path d="M12 3v10M8 9l4 4 4-4M4 15v5h16v-5"/>',
+    dice: '<rect x="4" y="4" width="16" height="16" rx="3"/><g fill="currentColor" stroke="none"><circle cx="9" cy="9" r="1.4"/><circle cx="15" cy="9" r="1.4"/><circle cx="9" cy="15" r="1.4"/><circle cx="15" cy="15" r="1.4"/></g>',
+    close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    left: '<path d="M15 5l-7 7 7 7"/>',
+    right: '<path d="M9 5l7 7-7 7"/>',
+    down: '<path d="M6 9l6 6 6-6"/>',
+    walk: '<circle cx="13" cy="4.5" r="1.8"/><path d="M10 21l2-6-3-3 1-5 4 3h3M9 12l-2 3"/>',
+    coffee: '<path d="M5 9h11v4.5A5.5 5.5 0 0110.5 19h0A5.5 5.5 0 015 13.5z"/><path d="M16 11h1.5a2.5 2.5 0 010 5H16M8.5 3.5v2.5M12 3.5v2.5"/>',
+  };
+  function icon(name) {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICONS[name] || ''}</svg>`;
+  }
+  document.querySelectorAll('[data-icon]').forEach((el) => el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon)));
+
+  // ── formatting ─────────────────────────────────────────────────────────
+  const fmtT = (min) => C.fmtTime(min, S().clock24);
+  const fmtTimeStr = (t) => fmtT(C.timeToMin(t));
+  const typeLabel = (t) => C.TYPE_LABEL[t] || 'Personal';
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many || `${one}s`}`;
+  function whenLabel(it) {
+    if (!it.date) return it.durationMin ? `About ${C.fmtDuration(it.durationMin)}` : 'No date';
+    if (C.isMultiDay(it)) return `${C.fmtShortDate(it.date)} – ${C.fmtShortDate(C.itemEndDate(it))}`;
+    if (!it.time) return 'Any time';
+    const s = C.timeToMin(it.time);
+    return `${fmtT(s)}–${fmtT(s + C.durationOf(it))}`;
+  }
+  function untilText(ms) {
+    const mins = Math.ceil(ms / 60000);
+    if (mins <= 1) return '1 min';
+    return C.fmtDuration(mins);
+  }
+  function dayOfSpan(it, iso) {
+    return `Day ${C.daysBetween(it.date, iso) + 1} of ${C.daysBetween(it.date, C.itemEndDate(it)) + 1}`;
+  }
+
+  // re-render a region without losing keyboard focus on the button you were on
+  // identity of a control, not its looks: what it does and which thing it acts on
+  function focusKey(el) {
+    const d = el.dataset || {};
+    return [d.act, d.f, d.id, d.iso, d.time, d.view, d.filter, el.id].join('|');
+  }
+  function findByKey(root, key) {
+    return [...root.querySelectorAll('button, [tabindex]')].find((b) => focusKey(b) === key) || null;
+  }
+  // If the control you were on is gone (a task you just finished, a card that
+  // changed), land on the first control in the same place, else the panel title.
+  function focusFallback(container) {
+    const first = container.querySelector('button:not([disabled]), [tabindex="0"]');
+    if (first) { first.focus({ preventScroll: true }); return; }
+    const head = container.closest('.panel') && container.closest('.panel').querySelector('h2');
+    if (head) {
+      head.tabIndex = -1;
+      head.focus({ preventScroll: true });
+    }
+  }
+  function keepFocus(container, render) {
+    const a = document.activeElement;
+    const key = a && a !== document.body && container.contains(a) ? focusKey(a) : null;
+    render();
+    if (!key) return;
+    const match = findByKey(container, key);
+    if (match) match.focus({ preventScroll: true });
+    else focusFallback(container);
+  }
+  // set innerHTML only when it changed, so a 10-second refresh doesn't rebuild
+  // (and re-announce) things that look the same
+  function setHTML(el, html) {
+    if (el.__html === html) return;
+    el.__html = html;
+    el.innerHTML = html;
+  }
+  // a dialog hands focus back to whatever opened it, even if that control has
+  // been rebuilt in the meantime
+  const openers = new WeakMap();
+  function rememberOpener(dlg) {
+    const a = document.activeElement;
+    openers.set(dlg, a && a !== document.body ? { el: a, key: focusKey(a) } : null);
+  }
+  function restoreOpener(dlg) {
+    const o = openers.get(dlg);
+    if (!o) return;
+    const target = o.el.isConnected ? o.el : findByKey(document, o.key);
+    if (target) target.focus({ preventScroll: true });
+    else $('add-input').focus({ preventScroll: true });
+  }
+  ['sheet', 'settings', 'focus'].forEach((id) => {
+    $(id).addEventListener('close', () => restoreOpener($(id)));
+  });
+
+  // ── toast ──────────────────────────────────────────────────────────────
+  // The toast is a popover, so it lives in the top layer and stays visible and
+  // usable above an open dialog. Once it fades it is emptied, so a stale Undo
+  // can never be tabbed to or fired.
+  let toastTimer = 0;
+  let toastHide = 0;
+  const canPopover = typeof HTMLElement !== 'undefined' && 'showPopover' in HTMLElement.prototype;
+  function toast(msg, undo) {
+    const el = $('toast');
+    clearTimeout(toastTimer);
+    clearTimeout(toastHide);
+    el.innerHTML = `<span>${esc(msg)}</span>${undo ? '<button class="btn btn--small" type="button">Undo</button>' : ''}`;
+    if (undo) {
+      el.querySelector('button').addEventListener('click', () => {
+        undo();
+        hideToast();
+      });
+    }
+    if (canPopover) {
+      try {
+        if (el.matches(':popover-open')) el.hidePopover();
+        el.showPopover(); // re-opening puts it above any dialog opened since
+      } catch (e) { /* fixed positioning still shows it */ }
+    }
+    requestAnimationFrame(() => el.classList.add('is-on'));
+    toastTimer = setTimeout(hideToast, undo ? 8000 : 3500);
+  }
+  function hideToast() {
+    const el = $('toast');
+    el.classList.remove('is-on');
+    clearTimeout(toastHide);
+    toastHide = setTimeout(() => {
+      if (el.classList.contains('is-on')) return;
+      el.innerHTML = '';
+      if (canPopover) {
+        try { if (el.matches(':popover-open')) el.hidePopover(); } catch (e) { /* already closed */ }
+      }
+    }, 300);
+  }
+  // keep the timer paused while the pointer or keyboard is on the toast
+  $('toast').addEventListener('pointerenter', () => clearTimeout(toastTimer));
+  $('toast').addEventListener('focusin', () => clearTimeout(toastTimer));
+  $('toast').addEventListener('pointerleave', () => { toastTimer = setTimeout(hideToast, 3000); });
+
+  // ── HUD clock + hero date ──────────────────────────────────────────────
+  function renderClock() {
+    const d = new Date(now());
+    const h = d.getHours();
+    const m = C.pad2(d.getMinutes());
+    $('clock-time').innerHTML = S().clock24
+      ? `${C.pad2(h)}:${m}`
+      : `${h % 12 || 12}:${m}<small>${h < 12 ? 'am' : 'pm'}</small>`;
+    $('clock-day').textContent = `${C.WD_LONG[d.getDay()]} ${d.getDate()} ${C.MON_SHORT[d.getMonth()]}`;
+  }
+
+  // ── sky (same painter as Mission Board, so the two apps feel like one city) ──
+  const SKIES = {
+    dawn: { label: 'Dawn patrol', sky: ['#24164a', '#6a3a7a', '#e8768a', '#ffc28c'], glow: 'rgba(255,190,140,.55)', sun: ['#fff1c9', '#ffb27a'], sunY: 0.74, sunR: 1, far: '#5b3a72', near: '#170f24', palm: '#0e0918', lit: 0.12, stars: false },
+    day: { label: 'Day shift', sky: ['#1d3b8c', '#2f74c9', '#5cc0e2', '#ffe0a8'], glow: 'rgba(255,245,210,.5)', sun: ['#ffffff', '#fff0c2'], sunY: 0.26, sunR: 0.8, far: '#3f5a92', near: '#141a33', palm: '#0c1124', lit: 0.03, stars: false },
+    dusk: { label: 'Golden hour', sky: ['#1a0a33', '#5c1a66', '#ff3d7f', '#ffa04a'], glow: 'rgba(255,130,90,.6)', sun: ['#ffe08f', '#ff6f61'], sunY: 0.7, sunR: 1.1, far: '#4c1f5e', near: '#130b20', palm: '#0b0614', lit: 0.26, stars: false },
+    night: { label: 'Night shift', sky: ['#04030c', '#0f0b2a', '#26134a', '#4a1c5e'], glow: 'rgba(170,140,255,.22)', sun: ['#fbf6ff', '#d8ccff'], sunY: 0.24, sunR: 0.55, far: '#1d1538', near: '#07050e', palm: '#040309', lit: 0.5, stars: true },
+  };
+  function skyPhase() {
+    const forced = params.get('sky');
+    if (SKIES[forced]) return forced;
+    const hr = new Date(now()).getHours();
+    if (hr >= 5 && hr < 8) return 'dawn';
+    if (hr >= 8 && hr < 17) return 'day';
+    if (hr >= 17 && hr < 20) return 'dusk';
+    return 'night';
+  }
+  function seeded(a) {
+    return () => {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function drawSkyline(c, rnd, w, h, o) {
+    let x = -8;
+    let tallest = null;
+    while (x < w + 8) {
+      const bw = o.minW + rnd() * (o.maxW - o.minW);
+      let bh = h * (o.minH + rnd() * (o.maxH - o.minH));
+      if (o.towers && rnd() < 0.14) bh = h * (o.maxH + rnd() * 0.2);
+      const top = h - bh;
+      c.fillStyle = o.color;
+      c.fillRect(x, top, bw + 1, bh);
+      if (rnd() < 0.3) c.fillRect(x + bw * 0.3, top - 5, bw * 0.4, 5);
+      if (o.towers && bh > h * 0.5) {
+        c.fillRect(x + bw / 2 - 1, top - 16, 2, 16);
+        if (!tallest || top < tallest.y) tallest = { x: x + bw / 2, y: top - 17 };
+      }
+      if (o.windows) {
+        for (let wy = top + 6; wy < h - 6; wy += 7) {
+          for (let wx = x + 4; wx < x + bw - 5; wx += 6) {
+            if (rnd() < o.windows) {
+              c.fillStyle = rnd() < 0.86 ? `rgba(255,212,140,${0.45 + rnd() * 0.5})` : 'rgba(255,110,170,.85)';
+              c.fillRect(wx, wy, 2.5, 3.5);
+            }
+          }
+        }
+      }
+      x += bw + (rnd() < 0.2 ? rnd() * 5 : 0);
+    }
+    if (tallest) {
+      c.fillStyle = '#2ee6c8';
+      c.beginPath();
+      c.arc(tallest.x, tallest.y, 2, 0, Math.PI * 2);
+      c.fill();
+    }
+  }
+  function drawPalm(c, x0, y0, H, lean, color) {
+    const x1 = x0 + lean * H;
+    const y1 = y0 - H;
+    const cx = x0 + lean * H * 0.15;
+    const cy = y0 - H * 0.55;
+    const at = (t) => ({
+      x: (1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * cx + t * t * x1,
+      y: (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * cy + t * t * y1,
+    });
+    c.strokeStyle = color;
+    c.fillStyle = color;
+    c.lineCap = 'round';
+    const segs = 28;
+    for (let i = 0; i < segs; i++) {
+      const p0 = at(i / segs);
+      const p1 = at((i + 1) / segs);
+      c.lineWidth = H * (0.048 - 0.026 * (i / segs));
+      c.beginPath();
+      c.moveTo(p0.x, p0.y);
+      c.lineTo(p1.x, p1.y);
+      c.stroke();
+    }
+    [-3.05, -2.7, -2.3, -1.9, -1.5, -1.1, -0.7, -0.3, 0.05].forEach((a, i) => {
+      const len = H * (0.34 + 0.05 * Math.sin(i * 1.7));
+      const ex = x1 + Math.cos(a) * len;
+      const ey = y1 + Math.sin(a) * len * 0.45 + len * 0.42;
+      const mx = x1 + Math.cos(a) * len * 0.55;
+      const my = y1 + Math.sin(a) * len * 0.75 - len * 0.12;
+      c.beginPath();
+      c.moveTo(x1, y1);
+      c.quadraticCurveTo(mx, my - len * 0.09, ex, ey);
+      c.quadraticCurveTo(mx, my + len * 0.06, x1, y1 + H * 0.02);
+      c.fill();
+    });
+    c.beginPath();
+    c.arc(x1, y1 + H * 0.01, H * 0.03, 0, Math.PI * 2);
+    c.fill();
+  }
+  let skyKey = '';
+  function paintSky(force) {
+    const cv = $('hero-sky');
+    const rect = cv.getBoundingClientRect();
+    const w = Math.max(1, Math.round(rect.width));
+    const h = Math.max(1, Math.round(rect.height));
+    const phase = skyPhase();
+    const d = new Date(now());
+    const dateTxt = `${C.WD_SHORT[d.getDay()]}, ${d.getDate()} ${C.MON_SHORT[d.getMonth()]}`;
+    const key = `${w}x${h}:${phase}:${dateTxt}`;
+    if (!force && key === skyKey) return;
+    skyKey = key;
+    const p = SKIES[phase];
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(h * dpr);
+    const c = cv.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const rnd = seeded(2026);
+    const sky = c.createLinearGradient(0, 0, 0, h * 0.9);
+    p.sky.forEach((col, i) => sky.addColorStop(i / (p.sky.length - 1), col));
+    c.fillStyle = sky;
+    c.fillRect(0, 0, w, h);
+    if (p.stars) {
+      for (let i = 0; i < 90; i++) {
+        c.fillStyle = `rgba(255,255,255,${0.2 + rnd() * 0.6})`;
+        const s = rnd() < 0.9 ? 1 : 2;
+        c.fillRect(rnd() * w, rnd() * h * 0.6, s, s);
+      }
+    }
+    const sx = w * 0.72;
+    const sy = h * p.sunY;
+    const sr = Math.min(h * 0.24, 88) * p.sunR;
+    const glow = c.createRadialGradient(sx, sy, 0, sx, sy, Math.max(w, h) * 0.65);
+    glow.addColorStop(0, p.glow);
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = glow;
+    c.fillRect(0, 0, w, h);
+    const sun = c.createLinearGradient(0, sy - sr, 0, sy + sr);
+    sun.addColorStop(0, p.sun[0]);
+    sun.addColorStop(1, p.sun[1]);
+    c.fillStyle = sun;
+    c.beginPath();
+    c.arc(sx, sy, sr, 0, Math.PI * 2);
+    c.fill();
+    drawSkyline(c, rnd, w, h, { color: p.far, minW: 14, maxW: 40, minH: 0.2, maxH: 0.52, towers: true, windows: 0 });
+    drawSkyline(c, rnd, w, h, { color: p.near, minW: 22, maxW: 66, minH: 0.1, maxH: 0.34, towers: false, windows: p.lit });
+    drawPalm(c, w * 0.035, h + 4, h * 0.98, 0.1, p.palm);
+    drawPalm(c, w * 0.955, h + 4, h * 0.9, -0.12, p.palm);
+    if (w > 640) drawPalm(c, w * 0.86, h + 4, h * 0.62, 0.06, p.palm);
+    $('hero-date').textContent = `${dateTxt} · ${p.label}`;
+  }
+
+  // ── right now ──────────────────────────────────────────────────────────
+  function nowActions(it, extra) {
+    const id = esc(it.id);
+    return `<div class="now-actions">
+      <button class="btn btn--primary" type="button" data-act="focus" data-id="${id}">${icon('play')}Start focus</button>
+      <button class="btn btn--done" type="button" data-act="done" data-id="${id}">${icon('check')}Done</button>
+      ${extra || ''}
+    </div>`;
+  }
+  function renderNow() {
+    const el = $('now');
+    const n = now();
+    const today = todayISO();
+    const items = store.all();
+    const r = C.rightNow(items, n);
+    const candidates = C.pickCandidates(items, n);
+    let pick = ui.pickId ? store.get(ui.pickId) : null;
+    // a pick only lasts while it is still something you could pick
+    if (pick && !candidates.some((c) => c.id === pick.id)) { ui.pickId = null; pick = null; }
+    // the app has no reminders, so a "leave by" cue is never allowed to hide
+    const nextLeave = r.next ? C.leaveAtMs(r.next) : null;
+    const leaveNear = !!nextLeave && n >= nextLeave - 15 * 60000;
+    const relDay = (iso) => {
+      const d = C.fmtDay(iso, today);
+      return /^(Today|Tomorrow|Yesterday)$/.test(d) ? d.toLowerCase() : d;
+    };
+
+    let mode = 'clear';
+    if (r.current) mode = 'current';
+    else if (leaveNear) mode = 'next';
+    else if (pick) mode = 'pick';
+    else if (r.next) mode = 'next';
+    else if (r.anyTime.length) mode = 'anytime';
+
+    let html = '';
+    let type = 'personal';
+    let who = null;
+    if (mode === 'current') {
+      const it = r.current;
+      type = it.type;
+      who = it;
+      const s = C.startMs(it);
+      const e = C.endMs(it);
+      const frac = Math.max(0, Math.min(1, (e - n) / (e - s)));
+      const then = r.next;
+      const leavePill = leaveNear
+        ? `<div class="now-leave">${icon('walk')}Leave by ${fmtT(C.minutesOfDay(new Date(nextLeave)))} for ${esc(then.title)}</div>` : '';
+      const also = r.alsoNow.length ? ` Also on now: <b>${esc(r.alsoNow.map((x) => x.title).join(', '))}</b>.` : '';
+      html = `
+        <div class="now-kicker"><span class="dot" aria-hidden="true"></span>On now</div>
+        <h2 class="now-title">${esc(it.title)}</h2>
+        <div class="now-meta"><span class="tag">${typeLabel(it.type)}</span><span>${whenLabel(it)}</span></div>
+        <div class="now-count">${untilText(e - n)} left</div>
+        <div class="now-bar" aria-hidden="true"><i style="width:${(frac * 100).toFixed(2)}%"></i></div>
+        ${leavePill}
+        ${nowActions(it, `<button class="btn" type="button" data-act="extend" data-id="${esc(it.id)}">+15 min</button>
+          <button class="btn btn--ghost" type="button" data-act="edit" data-id="${esc(it.id)}">Edit</button>`)}
+        <p class="now-after">${then ? `Then: <b>${esc(then.title)}</b> at ${fmtTimeStr(then.time)}.` : 'Nothing else timed today after this.'}${also}</p>`;
+    } else if (mode === 'pick') {
+      const it = pick;
+      type = it.type;
+      who = it;
+      const soon = r.next && C.startMs(r.next) - n < 60 * 60000;
+      html = `
+        <div class="now-kicker">Try this one</div>
+        <h2 class="now-title">${esc(it.title)}</h2>
+        <div class="now-meta"><span class="tag">${typeLabel(it.type)}</span><span>${whenLabel(it)}</span></div>
+        <p class="now-sub">${soon ? 'Just this, until your next thing.' : 'Just this. Nothing else needs you right now.'}</p>
+        ${nowActions(it, `${it.date ? '' : `<button class="btn" type="button" data-act="slot" data-id="${esc(it.id)}">${icon('slot')}Slot it</button>`}
+          ${candidates.length > 1 ? '<button class="btn btn--ghost" type="button" data-act="pick-another">Another</button>' : ''}
+          <button class="btn btn--ghost" type="button" data-act="pick-clear">Not now</button>`)}
+        ${r.next ? `<p class="now-after">Next timed thing: <b>${esc(r.next.title)}</b> at ${fmtTimeStr(r.next.time)}.</p>` : ''}`;
+    } else if (mode === 'next') {
+      const it = r.next;
+      type = it.type;
+      who = it;
+      const s = C.startMs(it);
+      const leave = C.leaveAtMs(it);
+      let kicker = 'Up next';
+      let count;
+      let frac;
+      if (leave && n < leave) {
+        count = `Leave in ${untilText(leave - n)}`;
+        frac = Math.min(1, (leave - n) / 7200000);
+      } else if (leave) {
+        kicker = 'Time to go';
+        count = `Starts in ${untilText(s - n)}`;
+        frac = Math.min(1, (s - n) / (it.travelMin * 60000));
+      } else {
+        count = `Starts in ${untilText(s - n)}`;
+        frac = Math.min(1, (s - n) / 7200000);
+      }
+      const after = r.upcoming[1];
+      // room is measured to the moment you must leave, not to the start
+      const room = (leave || s) - n > 30 * 60000 && candidates.length;
+      html = `
+        <div class="now-kicker">${kicker}</div>
+        <h2 class="now-title">${esc(it.title)}</h2>
+        <div class="now-meta"><span class="tag">${typeLabel(it.type)}</span><span>${whenLabel(it)}</span>${it.travelMin ? `<span>${it.travelMin} min travel</span>` : ''}</div>
+        <div class="now-count">${count}</div>
+        <div class="now-bar" aria-hidden="true"><i style="width:${(frac * 100).toFixed(2)}%"></i></div>
+        ${leave ? `<div class="now-leave">${icon('walk')}Leave by ${fmtT(C.minutesOfDay(new Date(leave)))}</div>` : ''}
+        ${nowActions(it, `<button class="btn" type="button" data-act="push" data-id="${esc(it.id)}">Push 15 min</button>
+          <button class="btn btn--ghost" type="button" data-act="edit" data-id="${esc(it.id)}">Edit</button>`)}
+        <p class="now-after">${after ? `After that: <b>${esc(after.title)}</b> at ${fmtTimeStr(after.time)}.` : 'That’s the last timed thing today.'}
+          ${room ? `<button class="link-btn" type="button" data-act="pick">${icon('dice')}Got time before then? Pick a task</button>` : ''}</p>`;
+    } else if (mode === 'anytime') {
+      const list = r.anyTime;
+      const it = list[ui.anyIdx % list.length];
+      type = it.type;
+      who = it;
+      html = `
+        <div class="now-kicker">Today, any time</div>
+        <h2 class="now-title">${esc(it.title)}</h2>
+        <div class="now-meta"><span class="tag">${typeLabel(it.type)}</span><span>${C.isMultiDay(it) ? dayOfSpan(it, today) : 'No set time'}</span></div>
+        <p class="now-sub">${list.length > 1 ? `${plural(list.length - 1, 'more any-time thing')} today. One at a time.` : 'No set time. Do it when it suits you.'}</p>
+        ${nowActions(it, `${list.length > 1 ? '<button class="btn" type="button" data-act="any-next">Next one</button>' : ''}
+          <button class="btn btn--ghost" type="button" data-act="edit" data-id="${esc(it.id)}">Edit</button>`)}
+        ${r.later ? `<p class="now-after">Next timed thing: <b>${esc(r.later.title)}</b>, ${relDay(r.later.date)} at ${fmtTimeStr(r.later.time)}.</p>` : ''}`;
+    } else {
+      html = `
+        <div class="now-kicker">Clear runway</div>
+        <h2 class="now-title">Nothing scheduled.</h2>
+        <p class="now-sub">Your day is open. Protect the space, or add one thing that matters.</p>
+        <div class="now-actions">
+          ${candidates.length ? `<button class="btn btn--primary" type="button" data-act="pick">${icon('dice')}Pick for me</button>` : ''}
+          <button class="btn ${candidates.length ? '' : 'btn--primary'}" type="button" data-act="add-focus">${icon('plus')}Add something</button>
+          <button class="btn btn--ghost" type="button" data-act="just-focus">${icon('timer')}Just focus</button>
+        </div>
+        ${r.later ? `<p class="now-after">Coming up: <b>${esc(r.later.title)}</b>, ${relDay(r.later.date)} at ${fmtTimeStr(r.later.time)}.</p>` : ''}`;
+    }
+    el.dataset.mode = mode;
+    el.dataset.type = type;
+
+    // Only the countdown and bar change from one tick to the next, so patch
+    // those in place. Rebuilding the card (and its buttons) every 10 s would
+    // drag keyboard focus and make a screen reader read it all again.
+    const sig = html
+      .replace(/<div class="now-count">[^<]*<\/div>/, '<div class="now-count"></div>')
+      .replace(/<i style="width:[^"]*"><\/i>/, '<i></i>');
+    if (el.__sig === sig) {
+      const count = html.match(/<div class="now-count">([^<]*)<\/div>/);
+      const bar = html.match(/<i style="width:([^"]*)"><\/i>/);
+      const countEl = el.querySelector('.now-count');
+      if (count && countEl && countEl.textContent !== count[1]) countEl.textContent = count[1];
+      const barEl = el.querySelector('.now-bar i');
+      if (bar && barEl) barEl.style.width = bar[1];
+    } else {
+      el.__sig = sig;
+      keepFocus(el, () => { el.innerHTML = html; });
+    }
+
+    // say it once, in words, only when the card is about something new
+    const nowKey = `${mode}:${who ? who.id : ''}`;
+    if (ui.nowKey !== nowKey) {
+      if (ui.nowKey !== undefined) {
+        const lead = { current: 'On now', pick: 'Try this one', next: 'Up next', anytime: 'Today, any time', clear: 'Nothing scheduled' }[mode];
+        $('now-sr').textContent = who ? `${lead}: ${who.title}` : lead;
+      }
+      ui.nowKey = nowKey;
+    }
+  }
+
+  // ── today strip ────────────────────────────────────────────────────────
+  const STRIP_TOP = 30;
+  const BEDTIME = 23 * 60;
+  let stripGeo = null;
+  function cssPx(name, fallback) {
+    const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+    return Number.isFinite(v) ? v : fallback;
+  }
+  function renderStrip() {
+    if (ui.drag) return;
+    const today = todayISO();
+    const nm = nowMin();
+    const items = store.all();
+    // lead = when travel starts, so lanes keep the travel lead-in clear of other blocks
+    const timed = items
+      .filter((it) => C.isVisible(it) && C.isTimed(it) && it.date === today)
+      .map((it) => {
+        const s = C.timeToMin(it.time);
+        return { it, lead: Math.max(0, s - (it.travelMin || 0)), s, e: Math.min(1440, s + C.durationOf(it)) };
+      })
+      .sort((a, b) => a.lead - b.lead || a.e - b.e || a.it.title.localeCompare(b.it.title));
+    let startH = 7;
+    let endH = 23;
+    timed.forEach((b) => {
+      startH = Math.min(startH, Math.floor(b.lead / 60));
+      endH = Math.max(endH, Math.ceil(b.e / 60));
+    });
+    startH = Math.min(startH, Math.floor(nm / 60));
+    endH = Math.min(24, Math.max(endH, Math.ceil((nm + 1) / 60)));
+    const HOUR = cssPx('--hour', 88);
+    const LANE = cssPx('--lane', 58);
+    const x = (min) => ((min - startH * 60) / 60) * HOUR;
+    const { lanes, count } = C.assignLanes(timed.map((b) => ({ s: b.lead, e: b.e })));
+    stripGeo = { startH, endH, HOUR };
+
+    let html = '';
+    for (let h = startH; h < endH; h++) {
+      html += `<div class="strip-hour" style="left:${x(h * 60)}px"><span>${fmtT(h * 60)}</span></div>`;
+    }
+    html += `<div class="strip-past" style="width:${Math.max(0, x(Math.min(nm, endH * 60)))}px"></div>`;
+    const gapFrom = Math.max(startH * 60, Math.ceil(nm / 5) * 5);
+    C.freeGaps(items, today, gapFrom, endH * 60).filter(([s, e]) => e - s >= 30).forEach(([s, e]) => {
+      const startSlot = Math.ceil(s / 15) * 15;
+      const w = x(e) - x(s) - 4;
+      const label = w > 70 ? `Free ${C.fmtDuration(e - s)}` : '+';
+      html += `<button class="strip-gap" type="button" style="left:${x(s) + 2}px;width:${w}px" data-act="add-at" data-iso="${today}" data-time="${C.minToTime(startSlot)}" aria-label="Free from ${fmtT(s)} to ${fmtT(e)}. Add something here.">${label}</button>`;
+    });
+    timed.forEach((b, i) => {
+      const it = b.it;
+      const cls = ['block'];
+      if (it.status === 'done') cls.push('is-done');
+      if (it.status === 'slipped') cls.push('is-slipped');
+      if (it.status === 'open' && b.s <= nm && nm < b.e) cls.push('is-now');
+      const w = Math.max(30, x(b.e) - x(b.s) - 3);
+      const top = STRIP_TOP + lanes[i] * LANE;
+      if (b.lead < b.s) {
+        html += `<div class="strip-travel" data-type="${it.type}" aria-hidden="true" style="left:${x(b.lead)}px;width:${x(b.s) - x(b.lead)}px;top:${top}px">${x(b.s) - x(b.lead) > 44 ? 'Travel' : ''}</div>`;
+      }
+      html += `<button class="${cls.join(' ')}" type="button" data-type="${it.type}" data-act="edit" data-id="${esc(it.id)}"
+        style="left:${x(b.s)}px;width:${w}px;top:${top}px"
+        aria-label="${esc(it.title)}, ${whenLabel(it)}${it.status === 'done' ? ', done' : it.status === 'slipped' ? ', slipped by' : ''}. Edit.">
+        <b>${esc(it.title)}</b><span>${whenLabel(it)}</span></button>`;
+    });
+    if (nm >= startH * 60 && nm <= endH * 60) {
+      html += `<div class="strip-now" style="left:${x(nm)}px"><span>Now ${fmtT(Math.floor(nm))}</span></div>`;
+    }
+
+    const canvas = $('strip-canvas');
+    const sc = $('strip-scroll');
+    const prevLeft = sc.scrollLeft;
+    canvas.style.width = `${(endH - startH) * HOUR}px`;
+    canvas.style.setProperty('--lanes', count);
+    if (canvas.__html !== html) keepFocus(canvas, () => setHTML(canvas, html));
+    if (!ui.stripPlaced) {
+      sc.scrollLeft = Math.max(0, x(nm) - sc.clientWidth * 0.3);
+      ui.stripPlaced = sc.clientWidth > 0;
+    } else sc.scrollLeft = prevLeft;
+
+    // any-time things for today sit above the line
+    const anyToday = items.filter((it) => C.isVisible(it) && it.date && !C.isTimed(it) && C.covers(it, today) && it.status !== 'slipped');
+    const anyEl = $('anytime');
+    const anyHTML = anyToday.map((it) => `
+      <button class="anytime-chip ${it.status === 'done' ? 'is-done' : ''}" type="button" data-type="${it.type}" data-act="edit" data-id="${esc(it.id)}">
+        <em>${C.isMultiDay(it) ? dayOfSpan(it, today) : 'Any time'}</em><span>${esc(it.title)}${it.status === 'done' ? '<span class="sr-only"> (done)</span>' : ''}</span></button>`).join('');
+    if (anyEl.__html !== anyHTML) keepFocus(anyEl, () => setHTML(anyEl, anyHTML));
+
+    // how much free time is left before bed
+    let free = '';
+    if (nm >= BEDTIME) free = 'Day’s done. Rest up.';
+    else {
+      const total = C.freeGaps(items, today, Math.ceil(nm), BEDTIME).reduce((sum, [s, e]) => sum + (e - s), 0);
+      free = total >= 15 ? `${C.fmtDuration(Math.floor(total / 5) * 5)} free before ${fmtT(BEDTIME)}` : 'Fully booked. That’s OK.';
+    }
+    $('strip-free').textContent = free;
+    $('strip-kicker').textContent = `Today · ${C.fmtDateLong(today)}`;
+  }
+
+  // ── open tasks ─────────────────────────────────────────────────────────
+  function renderTasks() {
+    // rebuilding the list mid-drag would pull the grip out from under the pointer
+    if (ui.drag) { ui.tasksDirty = true; return; }
+    ui.tasksDirty = false;
+    const items = store.all();
+    const tasks = items
+      .filter((it) => C.isVisible(it) && !it.date && it.status === 'open')
+      .sort((a, b) => a.createdAt - b.createdAt);
+    $('tasks-count').textContent = tasks.length;
+    const list = $('tasks-list');
+    keepFocus(list, () => {
+      list.innerHTML = tasks.length ? tasks.map((it) => {
+        const id = esc(it.id);
+        const t = esc(it.title);
+        return `<li class="task ${it.id === ui.pickId ? 'is-picked' : ''}" data-type="${it.type}">
+          <button class="grip" type="button" data-id="${id}" aria-label="Drag “${t}” onto today’s timeline, or press Enter to slot it into the next free time">${icon('grip')}</button>
+          <button class="task-body" type="button" data-act="edit" data-id="${id}">
+            <span class="task-title">${t}</span>
+            <span class="task-meta">${typeLabel(it.type)}${it.durationMin ? ` · about ${C.fmtDuration(it.durationMin)}` : ''}</span>
+          </button>
+          <div class="task-actions">
+            <button class="mini" type="button" data-act="focus" data-id="${id}" aria-label="Focus on “${t}”" title="Focus">${icon('play')}</button>
+            <button class="mini" type="button" data-act="slot" data-id="${id}" aria-label="Slot “${t}” into the next free time" title="Slot it in">${icon('slot')}</button>
+            <button class="check" type="button" data-act="done" data-id="${id}" aria-label="Mark “${t}” done">${icon('check')}</button>
+          </div>
+        </li>`;
+      }).join('') : '<li class="empty">Nothing waiting. Add one above. Even “drink water” counts.</li>';
+    });
+    const today = todayISO();
+    const doneToday = items.filter((it) => it.status === 'done' && C.toISO(new Date(it.updatedAt)) === today).length;
+    const doneEl = $('tasks-done');
+    doneEl.hidden = !doneToday;
+    doneEl.textContent = doneToday ? `${plural(doneToday, 'thing')} done today. Nice.` : '';
+  }
+
+  // ── slipped by ─────────────────────────────────────────────────────────
+  function renderSlipped() {
+    const el = $('slipped');
+    const today = todayISO();
+    const list = store.all().filter((it) => it.status === 'slipped').sort((a, b) => C.endMs(b) - C.endMs(a));
+    if (!list.length) {
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+    const wasOpen = !!el.querySelector('details[open]');
+    el.hidden = false;
+    keepFocus(el, () => {
+      el.innerHTML = `<details ${wasOpen ? 'open' : ''}>
+        <summary>
+          <span><span class="kicker">Slipped by</span><b>Some plans moved · no stress</b></span>
+          ${icon('down')}
+        </summary>
+        <p class="slip-intro">Plans move. Choose what to do with these, or let them go.</p>
+        <ul class="slip-list">${list.map((it) => {
+          const id = esc(it.id);
+          return `<li class="slip" data-type="${it.type}">
+            <div class="slip-title">${esc(it.title)}</div>
+            <div class="slip-when">${C.fmtDay(it.date, today)}${it.time ? ` · ${fmtTimeStr(it.time)}` : ''}</div>
+            <div class="slip-actions">
+              <button class="btn btn--small btn--done" type="button" data-act="slip-done" data-id="${id}">Done it</button>
+              <button class="btn btn--small" type="button" data-act="slip-later" data-id="${id}">Later today</button>
+              <button class="btn btn--small" type="button" data-act="slip-tomorrow" data-id="${id}">Tomorrow</button>
+              <button class="btn btn--small" type="button" data-act="edit" data-id="${id}">Pick a day</button>
+              <button class="btn btn--small btn--ghost" type="button" data-act="slip-letgo" data-id="${id}">Let go</button>
+            </div>
+          </li>`;
+        }).join('')}</ul>
+        ${list.length > 1 ? '<button class="btn btn--small btn--ghost slip-all" type="button" data-act="slip-all">Let them all go</button>' : ''}
+      </details>`;
+    });
+  }
+
+  // ── calendar ───────────────────────────────────────────────────────────
+  const VIEW_KICKER = { day: 'Day view', week: 'Week view', month: 'Month view', month2: '2-month view', month3: '3-month view', year: 'Year view' };
+  function calTitle(view, range) {
+    const a = C.fromISO(range.start);
+    const b = C.fromISO(range.end);
+    const thisYear = todayISO().slice(0, 4);
+    const sameYear = a.getFullYear() === b.getFullYear();
+    switch (view) {
+      case 'day': return C.fmtDateLong(range.start) + (range.start.slice(0, 4) !== thisYear ? ` ${a.getFullYear()}` : '');
+      case 'week': return `${a.getDate()} ${C.MON_SHORT[a.getMonth()]} — ${b.getDate()} ${C.MON_SHORT[b.getMonth()]}${sameYear ? '' : ` ${b.getFullYear()}`}`;
+      case 'month': return `${C.MON_LONG[a.getMonth()]} ${a.getFullYear()}`;
+      case 'month2':
+      case 'month3':
+        return sameYear
+          ? `${C.MON_SHORT[a.getMonth()]} — ${C.MON_SHORT[b.getMonth()]} ${b.getFullYear()}`
+          : `${C.MON_SHORT[a.getMonth()]} ${a.getFullYear()} — ${C.MON_SHORT[b.getMonth()]} ${b.getFullYear()}`;
+      default: return String(a.getFullYear());
+    }
+  }
+  function groupByDay(occ) {
+    const map = new Map();
+    occ.forEach((o) => {
+      if (!map.has(o.iso)) map.set(o.iso, []);
+      map.get(o.iso).push(o);
+    });
+    return map;
+  }
+  function chip(o) {
+    const it = o.item;
+    const t = o.dayCount > 1 ? `${o.dayIndex}/${o.dayCount}` : it.time ? fmtTimeStr(it.time) : '';
+    const cls = ['cchip'];
+    if (it.status === 'done') cls.push('is-done');
+    if (it.status === 'slipped') cls.push('is-slipped');
+    const state = it.status === 'done' ? '<span class="sr-only"> (done)</span>' : it.status === 'slipped' ? '<span class="sr-only"> (slipped by)</span>' : '';
+    return `<button class="${cls.join(' ')}" type="button" data-type="${it.type}" data-act="edit" data-id="${esc(it.id)}" title="${esc(it.title)}">${t ? `<em>${t}</em>` : ''}<span>${esc(it.title)}${state}</span></button>`;
+  }
+  function evRow(o) {
+    const it = o.item;
+    const time = o.dayCount > 1 ? `Day ${o.dayIndex}/${o.dayCount}` : it.time ? fmtTimeStr(it.time) : 'Any time';
+    const meta = [typeLabel(it.type)];
+    if (C.isTimed(it)) meta.push(C.fmtDuration(C.durationOf(it)));
+    if (it.travelMin) meta.push(`${it.travelMin} min travel`);
+    if (it.status === 'done') meta.push('Done');
+    if (it.status === 'slipped') meta.push('Slipped by');
+    const done = it.status === 'done';
+    return `<li class="ev ${done ? 'is-done' : ''} ${it.status === 'slipped' ? 'is-slipped' : ''}" data-type="${it.type}">
+      <span class="ev-time">${time}</span>
+      <button class="ev-body" type="button" data-act="edit" data-id="${esc(it.id)}">
+        <span class="ev-title">${esc(it.title)}</span><span class="ev-meta">${meta.join(' · ')}</span>
+      </button>
+      <button class="check ${done ? 'is-on' : ''}" type="button" data-act="toggle-done" data-id="${esc(it.id)}" aria-pressed="${done}" aria-label="Done: ${esc(it.title)}">${icon('check')}</button>
+    </li>`;
+  }
+  function agenda(view, occ, today, range, from) {
+    if (!occ.length) {
+      const past = S().filter === 'next' && from > range.end;
+      return `<div class="cal-empty"><b>${past ? 'All in the past' : 'Clear runway'}</b>
+        ${past ? 'This stretch has already happened. Switch to <strong>All events</strong> to look back.' : `Nothing ${S().filter === 'next' ? 'coming up ' : ''}in this stretch.`}
+        <div class="cal-empty-actions">
+          ${S().full ? '' : '<button class="btn btn--small" type="button" data-act="toggle-full">Show full calendar</button>'}
+          <button class="btn btn--small" type="button" data-act="add-focus">${icon('plus')}Add something</button>
+        </div></div>`;
+    }
+    const byDay = groupByDay(occ);
+    const monthHeads = view === 'month2' || view === 'month3' || view === 'year';
+    let lastMonth = '';
+    let html = '';
+    byDay.forEach((list, iso) => {
+      const d = C.fromISO(iso);
+      if (monthHeads && iso.slice(0, 7) !== lastMonth) {
+        lastMonth = iso.slice(0, 7);
+        html += `<h3 class="month-head">${C.MON_LONG[d.getMonth()]} ${d.getFullYear()}</h3>`;
+      }
+      const cls = ['dg'];
+      if (iso === today) cls.push('is-today');
+      if (iso < today) cls.push('is-past');
+      html += `<div class="${cls.join(' ')}">
+        <button class="dg-date" type="button" data-act="goto-day" data-iso="${iso}" aria-label="Open ${C.fmtDateLong(iso)} in day view">
+          <span class="dg-wd">${iso === today ? 'Today' : C.WD_SHORT[d.getDay()]}</span>
+          <span class="dg-num">${C.pad2(d.getDate())}</span>
+          <span class="dg-mon">${C.MON_SHORT[d.getMonth()]}</span>
+        </button>
+        <ul class="dg-items">${list.map(evRow).join('')}</ul>
+      </div>`;
+    });
+    return html;
+  }
+  function fullDay(iso, occ, today) {
+    const list = occ.filter((o) => o.iso === iso);
+    const any = list.filter((o) => !C.isTimed(o.item));
+    const timed = list.filter((o) => C.isTimed(o.item));
+    let startH = 6;
+    let endH = 23;
+    timed.forEach((o) => {
+      const s = C.timeToMin(o.item.time);
+      startH = Math.min(startH, Math.floor(s / 60));
+      endH = Math.max(endH, Math.floor(s / 60));
+    });
+    const isToday = iso === today;
+    const nh = Math.floor(nowMin() / 60);
+    const pastDay = iso < today;
+    let html = `<div class="hours"><div class="hr hr--any ${any.length ? '' : 'is-empty'}">
+      <span class="hr-label">Any time</span>
+      <div class="hr-items">${any.map(chip).join('')}${pastDay ? '' : `<button class="hr-add" type="button" data-act="add-at" data-iso="${iso}" data-time="" aria-label="Add something any time on ${C.fmtDateLong(iso)}">+ Add</button>`}</div></div>`;
+    for (let h = startH; h <= endH; h++) {
+      const here = timed.filter((o) => Math.floor(C.timeToMin(o.item.time) / 60) === h);
+      const past = pastDay || (isToday && h < nh);
+      const cls = ['hr'];
+      if (!here.length) cls.push('is-empty');
+      if (isToday && h === nh) cls.push('is-now');
+      if (past) cls.push('is-past');
+      html += `<div class="${cls.join(' ')}"><span class="hr-label">${fmtT(h * 60)}</span><div class="hr-items">${here.map(chip).join('')}${past ? '' : `<button class="hr-add" type="button" data-act="add-at" data-iso="${iso}" data-time="${C.pad2(h)}:00" aria-label="Add something at ${fmtT(h * 60)}">+ Add</button>`}</div></div>`;
+    }
+    return `${html}</div>`;
+  }
+  function fullWeek(range, byDay, today) {
+    let html = '<div class="week">';
+    for (let i = 0; i < 7; i++) {
+      const iso = C.addDays(range.start, i);
+      const d = C.fromISO(iso);
+      const list = byDay.get(iso) || [];
+      const cls = ['wk'];
+      if (iso === today) cls.push('is-today');
+      if (iso < today) cls.push('is-past');
+      if (!list.length) cls.push('is-empty');
+      html += `<div class="${cls.join(' ')}">
+        <button class="wk-head" type="button" data-act="goto-day" data-iso="${iso}" ${iso === today ? 'aria-current="date"' : ''} aria-label="Open ${C.fmtDateLong(iso)}${iso === today ? ', today' : ''} in day view"><b>${d.getDate()}</b><span>${iso === today ? 'Today' : C.WD_SHORT[d.getDay()]}</span></button>
+        <div class="wk-items">${list.length ? list.map(chip).join('') : '<span class="wk-free">Free</span>'}</div>
+      </div>`;
+    }
+    return `${html}</div>`;
+  }
+  function weekdayOrder() {
+    const ws = S().weekStart;
+    return Array.from({ length: 7 }, (_, i) => (ws + i) % 7);
+  }
+  function monthGrid(monthStart, byDay, today) {
+    const d0 = C.fromISO(monthStart);
+    const y = d0.getFullYear();
+    const m = d0.getMonth() + 1;
+    const dim = C.daysInMonth(y, m);
+    const lead = (d0.getDay() - S().weekStart + 7) % 7;
+    let cells = weekdayOrder().map((wd) => `<div class="mg-wd">${C.WD_SHORT[wd]}</div>`).join('');
+    for (let i = 0; i < lead; i++) cells += '<div class="mc is-blank" aria-hidden="true"></div>';
+    for (let day = 1; day <= dim; day++) {
+      const iso = `${y}-${C.pad2(m)}-${C.pad2(day)}`;
+      const list = byDay.get(iso) || [];
+      const cls = ['mc'];
+      if (iso === today) cls.push('is-today');
+      if (iso < today) cls.push('is-past');
+      if (!list.length) cls.push('is-empty');
+      const shown = list.slice(0, 3).map(chip).join('');
+      const more = list.length > 3 ? `<button class="mc-more" type="button" data-act="goto-day" data-iso="${iso}">+${list.length - 3} more</button>` : '';
+      cells += `<div class="${cls.join(' ')}"><button class="mc-num" type="button" data-act="goto-day" data-iso="${iso}" ${iso === today ? 'aria-current="date"' : ''} aria-label="${C.fmtDateLong(iso)}${iso === today ? ', today' : ''}${list.length ? `, ${plural(list.length, 'thing')}` : ''}">${day}</button>${shown}${more}</div>`;
+    }
+    const tail = (7 - ((lead + dim) % 7)) % 7;
+    for (let i = 0; i < tail; i++) cells += '<div class="mc is-blank" aria-hidden="true"></div>';
+    return `<section class="mg"><h3 class="mg-title">${C.MON_LONG[m - 1]} <span>${y}</span></h3><div class="mg-grid">${cells}</div></section>`;
+  }
+  function fullMonths(range, byDay, today) {
+    let html = '<div class="months">';
+    for (let m = C.startOfMonth(range.start); m <= range.end; m = C.addMonths(m, 1)) html += monthGrid(m, byDay, today);
+    return `${html}</div>`;
+  }
+  function fullYear(range, byDay, today) {
+    const y = Number(range.start.slice(0, 4));
+    const heads = weekdayOrder().map((wd) => `<span class="ym-wd">${C.WD_SHORT[wd].charAt(0)}</span>`).join('');
+    let html = '<div class="year">';
+    for (let m = 1; m <= 12; m++) {
+      const first = `${y}-${C.pad2(m)}-01`;
+      const lead = (C.weekday(first) - S().weekStart + 7) % 7;
+      let cells = heads + '<span></span>'.repeat(lead);
+      for (let day = 1; day <= C.daysInMonth(y, m); day++) {
+        const iso = `${y}-${C.pad2(m)}-${C.pad2(day)}`;
+        const list = byDay.get(iso) || [];
+        const cls = ['yd'];
+        if (list.length) cls.push('has');
+        if (iso === today) cls.push('is-today');
+        else if (iso < today) cls.push('is-past');
+        cells += `<button class="${cls.join(' ')}" type="button" data-act="goto-day" data-iso="${iso}" ${list.length ? `data-type="${list[0].item.type}"` : ''} ${iso === today ? 'aria-current="date"' : ''} aria-label="${C.fmtDateLong(iso)}${iso === today ? ', today' : ''}${list.length ? `, ${plural(list.length, 'thing')}` : ''}">${day}</button>`;
+      }
+      const isNow = today.slice(0, 7) === first.slice(0, 7);
+      html += `<div class="ym ${isNow ? 'is-now' : ''}"><button class="ym-title" type="button" data-act="goto-month" data-iso="${first}">${C.MON_LONG[m - 1]}</button><div class="ym-grid">${cells}</div></div>`;
+    }
+    return `${html}</div>`;
+  }
+  function renderCal() {
+    const st = S();
+    const today = todayISO();
+    const view = st.view;
+    const range = C.rangeFor(view, ui.anchor, st.weekStart);
+    const from = st.filter === 'next' && range.start < today ? today : range.start;
+    const occ = C.occurrences(store.all(), from, range.end);
+    $('cal-kicker').textContent = VIEW_KICKER[view];
+    $('cal-title').textContent = calTitle(view, range);
+    $('cal-today').classList.toggle('is-here', range.start <= today && today <= range.end);
+    document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
+    document.querySelectorAll('[data-filter]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filter === st.filter)));
+    $('full-toggle').setAttribute('aria-checked', String(st.full));
+    $('full-toggle').querySelector('b').textContent = st.full ? 'Full calendar on' : 'Show full calendar';
+    $('full-toggle').querySelector('small').textContent = st.full ? 'Every day and date is visible' : 'See every day and date';
+    const count = new Set(occ.map((o) => o.item.id)).size;
+    $('cal-count').textContent = count;
+    $('cal-count-label').innerHTML = `${count === 1 ? 'event' : 'events'}<br>in range`;
+    const body = $('cal-body');
+    keepFocus(body, () => {
+      if (!st.full) body.innerHTML = agenda(view, occ, today, range, from);
+      else if (view === 'day') body.innerHTML = fullDay(range.start, occ, today);
+      else if (view === 'week') body.innerHTML = fullWeek(range, groupByDay(occ), today);
+      else if (view === 'year') body.innerHTML = fullYear(range, groupByDay(occ), today);
+      else body.innerHTML = fullMonths(range, groupByDay(occ), today);
+    });
+  }
+  function setView(view) {
+    if (S().view === view) renderCal();
+    else store.setSettings({ view });
+  }
+
+  // ── render everything ──────────────────────────────────────────────────
+  function renderAll() {
+    renderClock();
+    renderNow();
+    renderStrip();
+    renderTasks();
+    renderSlipped();
+    renderCal();
+    renderFocusHud();
+    $('save-warn').hidden = store.canSave();
+  }
+  store.subscribe(renderAll);
+
+  // ── actions ────────────────────────────────────────────────────────────
+  function snapshot(it, keys) {
+    return keys.reduce((acc, k) => { acc[k] = it[k]; return acc; }, {});
+  }
+  function markDone(id) {
+    const it = store.get(id);
+    if (!it) return;
+    const prev = it.status;
+    if (ui.pickId === id) ui.pickId = null;
+    store.update(id, { status: 'done' });
+    toast(`Nice. “${it.title}” done.`, () => store.update(id, { status: prev }));
+  }
+  function scheduleAt(id, iso, min) {
+    const it = store.get(id);
+    if (!it) return;
+    const prev = snapshot(it, ['date', 'endDate', 'time', 'durationMin', 'type', 'status']);
+    const dur = it.durationMin || 30;
+    if (ui.pickId === id) ui.pickId = null;
+    store.update(id, { date: iso, endDate: null, time: C.minToTime(min), durationMin: dur, status: 'open' });
+    toast(`Slotted “${it.title}” · ${C.fmtDay(iso, todayISO())} ${fmtT(min)}`, () => store.update(id, prev));
+  }
+  function slotTask(id) {
+    const it = store.get(id);
+    if (!it) return;
+    const items = store.all();
+    const today = todayISO();
+    const dur = it.durationMin || 30;
+    const from = Math.ceil(nowMin() / 15) * 15;
+    let slot = C.findSlot(items, today, dur, from, BEDTIME, id);
+    let day = today;
+    if (slot == null) {
+      day = C.addDays(today, 1);
+      slot = C.findSlot(items, day, dur, 9 * 60, 21 * 60, id);
+    }
+    if (slot == null) {
+      toast('No free slot today or tomorrow. Open it to pick a time yourself.');
+      return;
+    }
+    scheduleAt(id, day, slot);
+  }
+  function doPick(excludeId) {
+    let list = C.pickCandidates(store.all(), now());
+    if (excludeId && list.length > 1) list = list.filter((it) => it.id !== excludeId);
+    if (!list.length) {
+      toast('Nothing to pick from yet. Add a task first.');
+      return;
+    }
+    ui.pickId = list[Math.floor(Math.random() * list.length)].id;
+    renderNow();
+    renderTasks();
+    const card = $('now');
+    if (card.getBoundingClientRect().top < 60 || card.getBoundingClientRect().bottom > window.innerHeight) {
+      card.scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth', block: 'start' });
+    }
+  }
+  function rescheduleLater(it) {
+    const today = todayISO();
+    // anything that isn't a single-day timed block keeps its span and just moves to today
+    if (!C.isTimed(it)) {
+      store.update(it.id, { ...C.moveToDate(it, today), status: 'open' });
+      toast(`“${it.title}” moved to today, any time.`);
+      return;
+    }
+    const dur = C.durationOf(it);
+    const slot = C.findSlot(store.all(), today, dur, Math.ceil(nowMin() / 15) * 15, BEDTIME, it.id);
+    if (slot == null) {
+      rescheduleTomorrow(it);
+      return;
+    }
+    store.update(it.id, { date: today, endDate: null, time: C.minToTime(slot), status: 'open' });
+    toast(`“${it.title}” moved to ${fmtT(slot)} today.`);
+  }
+  function rescheduleTomorrow(it) {
+    const tomorrow = C.addDays(todayISO(), 1);
+    store.update(it.id, { ...C.moveToDate(it, tomorrow), status: 'open' });
+    toast(`“${it.title}” moved to tomorrow${C.isTimed(it) ? ` at ${fmtTimeStr(it.time)}` : ''}.`);
+  }
+
+  const ACTIONS = {
+    focus: (id) => openFocus(id),
+    'just-focus': () => openFocus(null),
+    done: (id) => markDone(id),
+    'toggle-done': (id) => {
+      const it = store.get(id);
+      if (!it) return;
+      if (it.status === 'done') {
+        const back = it.date && C.endMs(it) <= now() ? 'slipped' : 'open';
+        store.update(id, { status: back });
+      } else markDone(id);
+    },
+    extend: (id) => {
+      const it = store.get(id);
+      if (!it) return;
+      store.update(id, { durationMin: C.durationOf(it) + 15 });
+      toast(`Added 15 minutes to “${it.title}”.`, () => store.update(id, { durationMin: it.durationMin }));
+    },
+    push: (id) => {
+      const it = store.get(id);
+      if (!it) return;
+      const moved = C.shiftTime(it, 15);
+      store.update(id, moved);
+      toast(`“${it.title}” pushed to ${fmtTimeStr(moved.time)}.`, () => store.update(id, { date: it.date, time: it.time }));
+    },
+    edit: (id) => openSheet(id),
+    pick: () => doPick(null),
+    'pick-another': () => doPick(ui.pickId),
+    'pick-clear': () => {
+      ui.pickId = null;
+      renderNow();
+      renderTasks();
+    },
+    slot: (id) => slotTask(id),
+    'any-next': () => {
+      ui.anyIdx++;
+      renderNow();
+    },
+    'add-focus': () => {
+      const input = $('add-input');
+      input.scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth', block: 'center' });
+      input.focus({ preventScroll: true });
+    },
+    'add-at': (id, b) => openSheet(null, { date: b.dataset.iso, time: b.dataset.time || null }),
+    'goto-day': (id, b) => {
+      ui.anchor = b.dataset.iso;
+      setView('day');
+      $('cal').scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth', block: 'start' });
+    },
+    'goto-month': (id, b) => {
+      ui.anchor = b.dataset.iso;
+      setView('month');
+    },
+    'toggle-full': () => store.setSettings({ full: !S().full }),
+    'slip-done': (id) => markDone(id),
+    'slip-later': (id) => { const it = store.get(id); if (it) rescheduleLater(it); },
+    'slip-tomorrow': (id) => { const it = store.get(id); if (it) rescheduleTomorrow(it); },
+    'slip-letgo': (id) => {
+      const it = store.get(id);
+      if (!it) return;
+      store.update(id, { status: 'dismissed' });
+      toast(`Let go of “${it.title}”.`, () => store.update(id, { status: 'slipped' }));
+    },
+    'slip-all': () => {
+      const ids = store.all().filter((it) => it.status === 'slipped').map((it) => it.id);
+      store.updateMany(ids, { status: 'dismissed' });
+      toast(`Let go of ${plural(ids.length, 'thing')}. Fresh start.`, () => store.updateMany(ids, { status: 'slipped' }));
+    },
+    'backup-save': () => saveBackup(),
+    'backup-merge': () => $('merge-file').click(),
+    install: () => doInstall(),
+  };
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]');
+    if (!b || b.disabled) return;
+    const fn = ACTIONS[b.dataset.act];
+    if (fn) fn(b.dataset.id, b, e);
+  });
+
+  // calendar controls
+  document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+  document.querySelectorAll('[data-filter]').forEach((b) => b.addEventListener('click', () => store.setSettings({ filter: b.dataset.filter })));
+  $('full-toggle').addEventListener('click', () => store.setSettings({ full: !S().full }));
+  $('cal-prev').addEventListener('click', () => {
+    ui.anchor = C.stepAnchor(S().view, ui.anchor, -1, todayISO(), S().weekStart);
+    renderCal();
+  });
+  $('cal-next').addEventListener('click', () => {
+    ui.anchor = C.stepAnchor(S().view, ui.anchor, 1, todayISO(), S().weekStart);
+    renderCal();
+  });
+  $('cal-today').addEventListener('click', () => {
+    ui.anchor = todayISO();
+    renderCal();
+  });
+
+  // ── quick add ──────────────────────────────────────────────────────────
+  const addInput = $('add-input');
+  function parsed() { return C.parseQuick(addInput.value, now(), { weekStart: S().weekStart }); }
+  function previewWhen(p) {
+    const today = todayISO();
+    if (!p.date) return 'Open task · no date';
+    if (p.endDate) return `${C.fmtDay(p.date, today)} → ${C.fmtDay(p.endDate, today)}`;
+    return C.fmtDay(p.date, today);
+  }
+  function renderPreview() {
+    const box = $('add-preview');
+    if (!addInput.value.trim()) {
+      box.innerHTML = `<span class="add-hint">Try <button class="ex" type="button" data-ex="dentist 3pm tomorrow">dentist 3pm tomorrow</button>, <button class="ex" type="button" data-ex="gym 6-7pm">gym 6-7pm</button> or <button class="ex" type="button" data-ex="call mum">call mum</button></span>`;
+      return;
+    }
+    const p = parsed();
+    const chips = [];
+    chips.push(p.title ? `<span class="chip chip--title">${esc(p.title)}</span>` : '<span class="add-note">Add a name too, like “dentist”.</span>');
+    chips.push(`<span class="chip chip--type" data-type="${p.type}">${typeLabel(p.type)}</span>`);
+    chips.push(`<span class="chip">${previewWhen(p)}</span>`);
+    if (p.time) {
+      const s = C.timeToMin(p.time);
+      chips.push(`<span class="chip">${fmtT(s)}${p.durationMin ? `–${fmtT(s + p.durationMin)}` : ''}</span>`);
+    }
+    if (p.travelMin) chips.push(`<span class="chip">${p.travelMin} min travel</span>`);
+    if (p.assumedTomorrow) chips.push(`<span class="add-note">${fmtTimeStr(p.time)} has gone today, so tomorrow.</span>`);
+    box.innerHTML = chips.join('');
+  }
+  addInput.addEventListener('input', renderPreview);
+  $('add-preview').addEventListener('click', (e) => {
+    const ex = e.target.closest('[data-ex]');
+    if (!ex) return;
+    addInput.value = ex.dataset.ex;
+    renderPreview();
+    addInput.focus();
+  });
+  $('add-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const p = parsed();
+    if (!p.title) {
+      addInput.classList.remove('is-nudge');
+      void addInput.offsetWidth;
+      addInput.classList.add('is-nudge');
+      renderPreview();
+      addInput.focus();
+      return;
+    }
+    const fields = {
+      title: p.title, date: p.date, endDate: p.endDate, time: p.time, type: p.type,
+      durationMin: p.durationMin || (p.time ? S().defaultDuration : null), travelMin: p.travelMin,
+    };
+    const item = store.add(fields);
+    addInput.value = '';
+    renderPreview();
+    const when = item.date ? ` · ${C.fmtDay(item.date, todayISO())}${item.time ? ` ${fmtTimeStr(item.time)}` : ''}` : ' to open tasks';
+    toast(`Added “${item.title}”${when}`, () => store.remove(item.id));
+  });
+  $('add-more').addEventListener('click', () => {
+    const p = addInput.value.trim() ? parsed() : null;
+    openSheet(null, p ? { title: p.title, date: p.date, endDate: p.endDate, time: p.time, durationMin: p.durationMin, travelMin: p.travelMin, type: p.type, fromQuick: true } : { date: todayISO() });
+  });
+  $('new-btn').addEventListener('click', () => openSheet(null, { date: todayISO() }));
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (/INPUT|TEXTAREA|SELECT/.test(tag) || document.querySelector('dialog[open]')) return;
+    e.preventDefault();
+    ACTIONS['add-focus']();
+  });
+
+  // ── edit sheet ─────────────────────────────────────────────────────────
+  const sheet = $('sheet');
+  const form = $('sheet-form');
+  const DURATIONS = [15, 30, 45, 60, 90, 120, 180, 240, 480];
+  const TRAVEL = [5, 10, 15, 20, 30, 45, 60, 90, 120];
+  function fillSelect(sel, values, current, emptyLabel, fmt) {
+    const list = values.slice();
+    if (current && !list.includes(current)) list.push(current);
+    list.sort((a, b) => a - b);
+    sel.innerHTML = (emptyLabel ? `<option value="">${emptyLabel}</option>` : '')
+      + list.map((v) => `<option value="${v}">${fmt(v)}</option>`).join('');
+    sel.value = current ? String(current) : '';
+  }
+  form.type.innerHTML = C.TYPES.map((t) => `<option value="${t}">${typeLabel(t)}</option>`).join('');
+  function openSheet(id, preset) {
+    const it = id ? store.get(id) : null;
+    ui.sheetId = it ? it.id : null;
+    ui.sheetFromQuick = !!(preset && preset.fromQuick);
+    rememberOpener(sheet);
+    const v = it || preset || {};
+    form.title.value = v.title || '';
+    form.date.value = v.date || '';
+    form.endDate.value = v.endDate || '';
+    form.time.value = v.time || '';
+    fillSelect(form.durationMin, DURATIONS, v.durationMin || null, `Default (${C.fmtDuration(S().defaultDuration)})`, C.fmtDuration);
+    fillSelect(form.travelMin, TRAVEL, v.travelMin || null, 'None', (m) => `${m} min`);
+    form.type.value = v.type || (v.date ? 'personal' : 'task');
+    form.notes.value = (it && it.notes) || '';
+    $('sheet-err').textContent = '';
+    $('sheet-kicker').textContent = it ? (it.status === 'slipped' ? 'Slipped by · pick a new time' : 'Edit') : 'Quick capture';
+    $('sheet-title').textContent = it ? (it.date ? 'Edit event' : 'Edit task') : 'New event';
+    $('sheet-delete').hidden = !it;
+    $('sheet-done').hidden = !it;
+    if (it) $('sheet-done').textContent = it.status === 'done' ? 'Not done' : 'Mark done';
+    sheet.showModal();
+    (v.title ? form.date : form.title).focus();
+  }
+  function readSheet() {
+    const title = form.title.value.trim();
+    const date = form.date.value || null;
+    let endDate = form.endDate.value || null;
+    if (!title) return { error: 'Give it a name first.' };
+    if (endDate && !date) return { error: 'Add a start date to go with the end date.' };
+    if (endDate && endDate < date) return { error: 'The end date is before the start date.' };
+    if (endDate === date) endDate = null;
+    return {
+      fields: {
+        title,
+        date,
+        endDate,
+        time: date ? form.time.value || null : null,
+        durationMin: Number(form.durationMin.value) || null,
+        travelMin: Number(form.travelMin.value) || null,
+        type: form.type.value,
+        notes: form.notes.value,
+      },
+    };
+  }
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const r = readSheet();
+    if (r.error) {
+      $('sheet-err').textContent = r.error;
+      return;
+    }
+    const f = r.fields;
+    if (f.time && !f.durationMin) f.durationMin = S().defaultDuration;
+    if (ui.sheetId) {
+      const prev = store.get(ui.sheetId);
+      if (prev) {
+        const next = C.normalizeItem({ ...prev, ...f });
+        if (prev.status === 'slipped' && (!next.date || C.endMs(next) > now())) f.status = 'open';
+        store.update(prev.id, f);
+        sheet.close();
+        toast(`Saved “${f.title}”.`);
+      }
+    } else {
+      const item = store.add(f);
+      // saved from "More options": the quick-add text has done its job
+      if (ui.sheetFromQuick) {
+        addInput.value = '';
+        renderPreview();
+      }
+      sheet.close();
+      toast(`Added “${item.title}”.`, () => store.remove(item.id));
+    }
+  });
+  $('sheet-delete').addEventListener('click', () => {
+    const it = ui.sheetId && store.get(ui.sheetId);
+    if (!it) return;
+    store.remove(it.id);
+    sheet.close();
+    toast(`Deleted “${it.title}”.`, () => store.restore(it.id));
+  });
+  $('sheet-done').addEventListener('click', () => {
+    const it = ui.sheetId && store.get(ui.sheetId);
+    if (!it) return;
+    sheet.close();
+    ACTIONS['toggle-done'](it.id);
+  });
+  // close buttons and backdrop clicks for both sheets
+  // (a press that starts inside the sheet and ends on the backdrop, like
+  // selecting text, must not count as a backdrop click)
+  document.querySelectorAll('dialog.sheet').forEach((d) => {
+    let downOnBackdrop = false;
+    d.addEventListener('pointerdown', (e) => { downOnBackdrop = e.target === d; });
+    d.addEventListener('click', (e) => {
+      if (e.target.closest('[data-close]') || (e.target === d && downOnBackdrop)) d.close();
+    });
+  });
+
+  // ── settings ───────────────────────────────────────────────────────────
+  const settingsDlg = $('settings');
+  const sform = $('settings-form');
+  $('settings-btn').addEventListener('click', () => {
+    rememberOpener(settingsDlg);
+    const st = S();
+    sform.clock24.value = String(st.clock24);
+    sform.weekStart.value = String(st.weekStart);
+    fillSelect(sform.defaultDuration, [15, 30, 45, 60, 90, 120], st.defaultDuration, '', C.fmtDuration);
+    fillSelect(sform.focusMin, [5, 10, 15, 20, 25, 30, 45, 60, 90], st.focusMin, '', (m) => `${m} min`);
+    sform.sound.checked = st.sound;
+    settingsDlg.showModal();
+  });
+  sform.addEventListener('change', () => {
+    store.setSettings({
+      clock24: sform.clock24.value === 'true',
+      weekStart: Number(sform.weekStart.value),
+      defaultDuration: Number(sform.defaultDuration.value),
+      focusMin: Number(sform.focusMin.value),
+      sound: sform.sound.checked,
+    });
+    paintSky(true);
+  });
+  sform.addEventListener('submit', (e) => e.preventDefault());
+  $('clear-all').addEventListener('click', () => {
+    if (!window.confirm('Clear everything on this device? This can’t be undone. Save a backup first if you’re not sure.')) return;
+    store.clearAll();
+    store.setMeta('seeded', true);
+    ui.pickId = null;
+    settingsDlg.close();
+    toast('Cleared. A fresh, empty calendar.');
+  });
+
+  // ── backup ─────────────────────────────────────────────────────────────
+  function saveBackup() {
+    const blob = new Blob([JSON.stringify(store.exportData(), null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `easy-cal-backup-${todayISO()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 1000);
+    toast('Backup saved to your downloads.');
+  }
+  $('merge-file').addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const r = store.importData(JSON.parse(await file.text()));
+      toast(r.added || r.updated ? `Merged: ${r.added} new, ${r.updated} updated.` : 'Already up to date. Nothing new in that backup.');
+    } catch (err) {
+      toast(err && /backup/.test(err.message) ? err.message : 'Couldn’t read that file. Is it an Easy Cal backup?');
+    }
+  });
+
+  // ── install ────────────────────────────────────────────────────────────
+  let installEvt = null;
+  function showInstall(on) {
+    $('install-hud').hidden = !on;
+    document.querySelectorAll('[data-install]').forEach((b) => { b.hidden = !on; });
+  }
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    installEvt = e;
+    showInstall(true);
+  });
+  window.addEventListener('appinstalled', () => {
+    installEvt = null;
+    showInstall(false);
+  });
+  async function doInstall() {
+    if (!installEvt) return;
+    installEvt.prompt();
+    try { await installEvt.userChoice; } catch (e) { /* dismissed */ }
+    installEvt = null;
+    showInstall(false);
+  }
+  $('install-hud').addEventListener('click', doInstall);
+
+  // ── focus mode ─────────────────────────────────────────────────────────
+  // The session lives in localStorage with an absolute end time, so a reload,
+  // a sleeping phone or a background tab never loses your place.
+  const FOCUS_KEY = 'easycal.focus';
+  const focusDlg = $('focus');
+  const RING_C = 2 * Math.PI * 52;
+  $('ring-prog').style.strokeDasharray = String(RING_C);
+  let focus = null;
+  try {
+    const f = storage && JSON.parse(storage.getItem(FOCUS_KEY) || 'null');
+    if (f && f.state && Number.isFinite(f.totalMs)) focus = f;
+  } catch (e) { focus = null; }
+  function saveFocus() {
+    if (!storage) return;
+    try {
+      if (focus) storage.setItem(FOCUS_KEY, JSON.stringify(focus));
+      else storage.removeItem(FOCUS_KEY);
+    } catch (e) { /* storage full or blocked: the timer still runs in memory */ }
+  }
+  const mmss = (ms) => {
+    const s = Math.max(0, Math.ceil(ms / 1000));
+    return `${C.pad2(Math.floor(s / 60))}:${C.pad2(s % 60)}`;
+  };
+  function remainingMs() {
+    if (!focus) return 0;
+    return focus.state === 'running' ? Math.max(0, focus.endAt - now()) : focus.remainMs;
+  }
+  function openFocus(itemId) {
+    if (focus && focus.state !== 'setup' && focus.state !== 'finished') {
+      showFocus();
+      if (itemId && itemId !== focus.itemId) toast('Finish or end this session first.');
+      return;
+    }
+    const it = itemId ? store.get(itemId) : null;
+    const total = S().focusMin * 60000;
+    focus = { itemId: it ? it.id : null, title: it ? it.title : '', totalMs: total, remainMs: total, endAt: 0, state: 'setup', breakAt: 0, doneMs: 0, priorMs: 0 };
+    saveFocus();
+    $('focus-name').value = '';
+    $('preset-custom').value = '';
+    showFocus();
+  }
+  function showFocus() {
+    if (!focusDlg.open) {
+      rememberOpener(focusDlg);
+      focusDlg.showModal();
+    }
+    renderFocus();
+    const first = focusDlg.querySelector('.focus-actions .btn--primary');
+    if (first) first.focus();
+  }
+  function hideFocus() {
+    if (focusDlg.open) focusDlg.close();
+    renderFocusHud();
+  }
+  function closeFocus() {
+    focus = null;
+    saveFocus();
+    if (focusDlg.open) focusDlg.close();
+    document.title = BASE_TITLE;
+    renderFocusHud();
+  }
+  const ENCOURAGE = [
+    'You’re doing it. Just this one thing.',
+    'Wandered off? No problem. Come back to it.',
+    'Small steps still count.',
+    'Nothing else needs you right now.',
+  ];
+  function focusLine() {
+    if (!focus) return '';
+    switch (focus.state) {
+      case 'setup': return 'Pick a length. Short is fine. Starting is the hard part.';
+      case 'running': return ENCOURAGE[Math.floor((focus.totalMs - remainingMs()) / 300000) % ENCOURAGE.length];
+      case 'paused': return 'Paused. Take your time, it will wait.';
+      case 'break': return 'Stretch, sip some water, look out of a window.';
+      case 'finished': {
+        const mins = Math.max(1, Math.round(focus.doneMs / 60000));
+        return `${plural(mins, 'minute')} of focus. That counts.`;
+      }
+      default: return '';
+    }
+  }
+  function renderFocus() {
+    if (!focus) return;
+    const st = focus.state;
+    focusDlg.dataset.state = st;
+    const kicker = { setup: 'Focus mode', running: 'Focusing', paused: 'Paused', break: 'Break time', finished: 'Nice work' }[st];
+    $('focus-kicker').textContent = kicker;
+    const it = focus.itemId ? store.get(focus.itemId) : null;
+    $('focus-title').textContent = focus.title || (it && it.title) || 'Just focus';
+    $('focus-name').hidden = !(st === 'setup' && !focus.itemId);
+    $('presets').hidden = st !== 'setup';
+    $('focus-hide').hidden = st === 'setup' || st === 'finished';
+    document.querySelectorAll('.preset').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.min) * 60000 === focus.totalMs)));
+    let acts = '';
+    if (st === 'setup') {
+      acts = `<button class="btn btn--primary" type="button" data-f="start">${icon('play')}Start</button>
+        <button class="btn btn--ghost" type="button" data-f="cancel">Not now</button>`;
+    } else if (st === 'running') {
+      acts = `<button class="btn" type="button" data-f="pause">${icon('pause')}Pause</button>
+        <button class="btn btn--dusk" type="button" data-f="break">${icon('coffee')}I need a break</button>
+        <button class="btn btn--ghost" type="button" data-f="end">End session</button>`;
+    } else if (st === 'paused') {
+      acts = `<button class="btn btn--primary" type="button" data-f="resume">${icon('play')}Resume</button>
+        <button class="btn btn--ghost" type="button" data-f="end">End session</button>`;
+    } else if (st === 'break') {
+      acts = `<button class="btn btn--primary" type="button" data-f="resume">${icon('play')}Back to it</button>
+        <button class="btn btn--ghost" type="button" data-f="end">End session</button>`;
+    } else if (st === 'finished') {
+      acts = it && it.status !== 'done'
+        ? `<button class="btn btn--primary" type="button" data-f="mark">${icon('check')}Mark done</button>
+          <button class="btn" type="button" data-f="more">+10 min</button>
+          <button class="btn btn--ghost" type="button" data-f="later">Not done yet</button>`
+        : `<button class="btn btn--primary" type="button" data-f="close">${icon('check')}Done</button>
+          <button class="btn" type="button" data-f="more">+10 min</button>`;
+    }
+    const box = $('focus-actions');
+    keepFocus(box, () => { box.innerHTML = acts; });
+    renderFocusTime();
+  }
+  function renderFocusTime() {
+    if (!focus) return;
+    const rem = remainingMs();
+    const st = focus.state;
+    let frac = focus.totalMs ? rem / focus.totalMs : 0;
+    let text = mmss(rem);
+    if (st === 'break') {
+      text = mmss(now() - focus.breakAt);
+      frac = 1;
+    }
+    if (st === 'finished') {
+      text = 'Done';
+      frac = 1;
+    }
+    $('ring-time').textContent = text;
+    $('ring-prog').style.strokeDashoffset = String(RING_C * (1 - frac));
+    $('focus-msg').textContent = focusLine();
+    if (st === 'running') document.title = `${mmss(rem)} · ${focus.title || 'Focus'}`;
+    else if (st === 'break') document.title = `Break · ${BASE_TITLE}`;
+    else document.title = BASE_TITLE;
+  }
+  function renderFocusHud() {
+    const b = $('focus-hud');
+    const live = focus && (focus.state === 'running' || focus.state === 'paused' || focus.state === 'break');
+    b.classList.toggle('is-live', !!live);
+    if (live) {
+      const label = focus.state === 'break' ? 'Break' : focus.state === 'paused' ? `${mmss(focus.remainMs)} ⏸` : mmss(remainingMs());
+      b.innerHTML = `${icon('timer')}<span>${label}</span>`;
+      b.setAttribute('aria-label', `Focus timer, ${focus.state === 'running' ? `${mmss(remainingMs())} left` : focus.state}. Open it.`);
+    } else {
+      b.innerHTML = icon('timer');
+      b.setAttribute('aria-label', 'Start a focus timer');
+    }
+  }
+  let audioCtx = null;
+  function unlockAudio() {
+    if (!S().sound) return;
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch (e) { audioCtx = null; }
+  }
+  function chime() {
+    if (!S().sound) return;
+    try {
+      unlockAudio();
+      if (!audioCtx) return;
+      const t0 = audioCtx.currentTime + 0.02;
+      [659.25, 880].forEach((freq, i) => {
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        const t = t0 + i * 0.3;
+        o.type = 'sine';
+        o.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.16, t + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+        o.connect(g).connect(audioCtx.destination);
+        o.start(t);
+        o.stop(t + 1.3);
+      });
+    } catch (e) { /* no sound is fine */ }
+  }
+  // segMs is the focus time in this stretch; "+10 min" adds a new stretch, and
+  // the total shown is everything you've done
+  function finishFocus(segMs) {
+    focus.state = 'finished';
+    focus.doneMs = (focus.priorMs || 0) + segMs;
+    focus.remainMs = 0;
+    saveFocus();
+    chime();
+    showFocus();
+    $('focus-sr').textContent = 'Focus session finished. Nice work.';
+  }
+  function setFocusLength(min) {
+    if (!focus || focus.state !== 'setup') return;
+    const m = Math.max(1, Math.min(180, Math.round(min)));
+    focus.totalMs = m * 60000;
+    focus.remainMs = focus.totalMs;
+    saveFocus();
+    renderFocus();
+  }
+  $('presets').addEventListener('click', (e) => {
+    const b = e.target.closest('.preset');
+    if (!b) return;
+    $('preset-custom').value = '';
+    setFocusLength(Number(b.dataset.min));
+  });
+  $('preset-custom').addEventListener('input', (e) => {
+    const v = Number(e.target.value);
+    if (v >= 1) setFocusLength(v);
+  });
+  $('focus-actions').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-f]');
+    if (!b || !focus) return;
+    const f = b.dataset.f;
+    if (f === 'start') {
+      if (!focus.itemId) focus.title = $('focus-name').value.trim();
+      focus.endAt = now() + focus.remainMs;
+      focus.state = 'running';
+      unlockAudio();
+      $('focus-sr').textContent = `Focus started. ${Math.round(focus.totalMs / 60000)} minutes.`;
+    } else if (f === 'cancel') {
+      closeFocus();
+      return;
+    } else if (f === 'pause') {
+      focus.remainMs = remainingMs();
+      focus.state = 'paused';
+    } else if (f === 'break') {
+      focus.remainMs = remainingMs();
+      focus.state = 'break';
+      focus.breakAt = now();
+    } else if (f === 'resume') {
+      focus.endAt = now() + focus.remainMs;
+      focus.state = 'running';
+    } else if (f === 'end') {
+      const seg = focus.totalMs - remainingMs();
+      if ((focus.priorMs || 0) + seg >= 60000) finishFocus(seg);
+      else closeFocus();
+      return;
+    } else if (f === 'mark') {
+      const it = focus.itemId && store.get(focus.itemId);
+      closeFocus();
+      if (it) markDone(it.id);
+      return;
+    } else if (f === 'more') {
+      focus.priorMs = focus.doneMs || 0;
+      focus.totalMs = 10 * 60000;
+      focus.remainMs = focus.totalMs;
+      focus.endAt = now() + focus.remainMs;
+      focus.state = 'running';
+    } else if (f === 'later') {
+      closeFocus();
+      toast('Saved your place. Come back to it any time.');
+      return;
+    } else if (f === 'close') {
+      closeFocus();
+      return;
+    }
+    saveFocus();
+    renderFocus();
+    renderFocusHud();
+  });
+  $('focus-hide').addEventListener('click', hideFocus);
+  focusDlg.addEventListener('cancel', (e) => {
+    e.preventDefault();
+    if (!focus || focus.state === 'setup') closeFocus();
+    else if (focus.state === 'finished') {
+      closeFocus();
+    } else hideFocus();
+  });
+  $('focus-hud').addEventListener('click', () => {
+    if (focus && focus.state !== 'setup') showFocus();
+    else openFocus(null);
+  });
+  setInterval(() => {
+    if (!focus) return;
+    if (focus.state === 'running' && remainingMs() <= 0) {
+      finishFocus(focus.totalMs);
+      renderFocusHud();
+      return;
+    }
+    if (focus.state === 'running' || focus.state === 'break') {
+      if (focusDlg.open) renderFocusTime();
+      else if (focus.state === 'running') document.title = `${mmss(remainingMs())} · ${focus.title || 'Focus'}`;
+      renderFocusHud();
+    }
+  }, 500);
+
+  // ── drag a task onto the strip ─────────────────────────────────────────
+  // Pointer events, so it works with a mouse, a pen or a finger. The grip is
+  // the only touch-action:none spot, so the page still scrolls everywhere else.
+  function dropMinute(cx, cy, durMin) {
+    const sc = $('strip-scroll');
+    const r = sc.getBoundingClientRect();
+    if (!stripGeo || cx < r.left || cx > r.right || cy < r.top - 40 || cy > r.bottom + 40) return null;
+    const g = stripGeo;
+    const raw = g.startH * 60 + ((cx - r.left + sc.scrollLeft) / g.HOUR) * 60 - durMin / 2;
+    const earliest = Math.max(Math.ceil(nowMin() / 15) * 15, g.startH * 60);
+    // the block has to fit before midnight, so late at night there's nowhere to drop
+    const latest = Math.min(g.endH * 60 - 15, 1440 - durMin);
+    if (earliest > latest) return null;
+    return Math.max(earliest, Math.min(Math.round(raw / 15) * 15, latest));
+  }
+  $('tasks-list').addEventListener('pointerdown', (e) => {
+    const grip = e.target.closest('.grip');
+    if (!grip || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const it = store.get(grip.dataset.id);
+    if (!it) return;
+    e.preventDefault();
+    try { grip.setPointerCapture(e.pointerId); } catch (err) { /* old browsers */ }
+    const start = { x: e.clientX, y: e.clientY };
+    const dur = it.durationMin || 30;
+    const marker = document.createElement('div');
+    marker.className = 'strip-drop';
+    let ghost = null;
+    let drop = null;
+    let last = start;
+    let raf = 0;
+    const place = () => {
+      drop = dropMinute(last.x, last.y, dur);
+      if (drop == null || !stripGeo) {
+        marker.remove();
+        return;
+      }
+      const g = stripGeo;
+      marker.style.left = `${((drop - g.startH * 60) / 60) * g.HOUR}px`;
+      marker.style.width = `${Math.max(40, (dur / 60) * g.HOUR)}px`;
+      marker.textContent = fmtT(drop);
+      if (!marker.isConnected) $('strip-canvas').appendChild(marker);
+    };
+    const loop = () => {
+      const sc = $('strip-scroll');
+      const r = sc.getBoundingClientRect();
+      if (last.y > r.top - 40 && last.y < r.bottom + 40) {
+        if (last.x < r.left + 48) sc.scrollLeft -= 12;
+        else if (last.x > r.right - 48) sc.scrollLeft += 12;
+      }
+      place();
+      raf = requestAnimationFrame(loop);
+    };
+    const move = (ev) => {
+      last = { x: ev.clientX, y: ev.clientY };
+      if (!ghost) {
+        if (Math.hypot(last.x - start.x, last.y - start.y) < 6) return;
+        ghost = document.createElement('div');
+        ghost.className = 'drag-ghost';
+        ghost.textContent = it.title;
+        document.body.appendChild(ghost);
+        document.body.classList.add('is-dragging');
+        ui.drag = { id: it.id };
+        raf = requestAnimationFrame(loop);
+      }
+      ghost.style.left = `${last.x}px`;
+      ghost.style.top = `${last.y}px`;
+    };
+    // Listen on window, not the grip: if anything redraws the list mid-drag the
+    // grip can vanish, and the drag must still end cleanly.
+    const pid = e.pointerId;
+    const finish = (ok) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', cancel);
+      cancelAnimationFrame(raf);
+      const dragged = !!ghost;
+      if (ghost) ghost.remove();
+      marker.remove();
+      document.body.classList.remove('is-dragging');
+      ui.drag = null;
+      if (ui.tasksDirty) renderTasks();
+      if (dragged && ok && drop != null) scheduleAt(it.id, todayISO(), drop);
+      else if (dragged) renderStrip();
+      else if (ok) toast('Drag me onto the timeline, or use the slot button.');
+    };
+    const up = (ev) => { if (ev.pointerId === pid) finish(true); };
+    const cancel = (ev) => { if (ev.pointerId === pid) finish(false); };
+    const onMove = (ev) => { if (ev.pointerId === pid) move(ev); };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', cancel);
+  });
+  // keyboard users: Enter/Space on a grip slots the task in (a mouse click has detail > 0)
+  $('tasks-list').addEventListener('click', (e) => {
+    const grip = e.target.closest('.grip');
+    if (grip && e.detail === 0) slotTask(grip.dataset.id);
+  });
+
+  // ── the heartbeat ──────────────────────────────────────────────────────
+  function tick() {
+    const t = todayISO();
+    const hour = String(Math.floor(nowMin() / 60));
+    const body = $('cal-body');
+    const newDay = t !== ui.today;
+    if (newDay) {
+      if (ui.anchor === ui.today) ui.anchor = t;
+      ui.today = t;
+      ui.stripPlaced = false;
+    }
+    const due = C.dueToSlip(store.all(), now());
+    if (due.length) store.updateMany(due, { status: 'slipped' }); // re-renders everything
+    else if (newDay) renderAll(); // "done today" and "Yesterday" labels need a fresh look
+    else {
+      renderClock();
+      renderNow();
+      renderStrip();
+      // the full day view marks the current hour, so it follows the clock
+      if (hour !== body.dataset.hour && S().full && S().view === 'day') renderCal();
+    }
+    body.dataset.day = t;
+    body.dataset.hour = hour;
+    paintSky();
+  }
+  setInterval(tick, 10000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+  window.addEventListener('storage', (e) => {
+    if (e.key === STORE_KEY) store.reload();
+  });
+  if ('ResizeObserver' in window) {
+    new ResizeObserver(() => paintSky()).observe(document.querySelector('.hero'));
+    let lastHour = cssPx('--hour', 88);
+    new ResizeObserver(() => {
+      const h = cssPx('--hour', 88);
+      if (h !== lastHour) {
+        lastHour = h;
+        ui.stripPlaced = false;
+        renderStrip();
+      }
+    }).observe(document.body);
+  } else window.addEventListener('resize', () => paintSky());
+
+  // ── start ──────────────────────────────────────────────────────────────
+  const firstSlips = C.dueToSlip(store.all(), now());
+  if (firstSlips.length) store.updateMany(firstSlips, { status: 'slipped' });
+  renderAll();
+  renderPreview();
+  paintSky(true);
+  $('cal-body').dataset.day = todayISO();
+  if (focus) {
+    if (focus.state === 'running' && remainingMs() <= 0) finishFocus(focus.totalMs);
+    else if (focus.state !== 'setup') showFocus();
+    else {
+      focus = null;
+      saveFocus();
+    }
+    renderFocusHud();
+  }
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* offline support is a bonus */ });
+  }
+})();
+</script>
+</body>
+</html>
