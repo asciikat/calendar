@@ -362,6 +362,13 @@ test('rangeFor each view', () => {
   eq(C.rangeFor('month3', '2026-10-15', 1), { start: '2026-10-01', end: '2026-12-31' });
   eq(C.rangeFor('year', '2026-10-15', 1), { start: '2026-01-01', end: '2026-12-31' });
 });
+test('2-week and 6-month ranges and steps', () => {
+  eq(C.rangeFor('week2', '2026-10-01', 1), { start: '2026-09-28', end: '2026-10-11' });
+  eq(C.rangeFor('month6', '2026-10-15', 1), { start: '2026-10-01', end: '2027-03-31' });
+  eq(C.stepAnchor('week2', '2026-10-01', 1, '2026-10-01', 1), '2026-10-15');
+  eq(C.stepAnchor('month6', '2026-10-01', 1, '2026-10-01', 1), '2027-04-01');
+  eq(C.stepAnchor('month6', '2027-04-01', -1, '2026-10-01', 1), '2026-10-01');
+});
 test('stepAnchor moves by a view length and snaps back to today', () => {
   eq(C.stepAnchor('day', '2026-10-01', 1, '2026-10-01', 1), '2026-10-02');
   eq(C.stepAnchor('week', '2026-10-01', 1, '2026-10-01', 1), '2026-10-08');

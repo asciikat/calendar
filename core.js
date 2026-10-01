@@ -16,7 +16,7 @@
     personal: 'Personal', appointment: 'Appointment', health: 'Health', task: 'Task', adventure: 'Adventure',
   };
   const STATUSES = ['open', 'done', 'slipped', 'dismissed'];
-  const VIEWS = ['day', 'week', 'month', 'month2', 'month3', 'year'];
+  const VIEWS = ['day', 'week', 'week2', 'month', 'month2', 'month3', 'month6', 'year'];
   const DEFAULT_DURATION = 60;
   const DAY_MS = 86400000;
   const DEFAULT_SETTINGS = Object.freeze({
@@ -234,12 +234,18 @@
         const s = startOfWeek(anchor, weekStart);
         return { start: s, end: addDays(s, 6) };
       }
+      case 'week2': {
+        const s = startOfWeek(anchor, weekStart);
+        return { start: s, end: addDays(s, 13) };
+      }
       case 'month':
         return { start: startOfMonth(anchor), end: endOfMonth(anchor) };
       case 'month2':
         return { start: startOfMonth(anchor), end: endOfMonth(addMonths(startOfMonth(anchor), 1)) };
       case 'month3':
         return { start: startOfMonth(anchor), end: endOfMonth(addMonths(startOfMonth(anchor), 2)) };
+      case 'month6':
+        return { start: startOfMonth(anchor), end: endOfMonth(addMonths(startOfMonth(anchor), 5)) };
       case 'year': {
         const y = anchor.slice(0, 4);
         return { start: `${y}-01-01`, end: `${y}-12-31` };
@@ -250,9 +256,10 @@
   }
   // step the anchor one view-length; lands on today whenever today is in the new range
   function stepAnchor(view, anchor, dir, todayISO, weekStart) {
-    const months = { month: 1, month2: 2, month3: 3, year: 12 }[view];
+    const months = { month: 1, month2: 2, month3: 3, month6: 6, year: 12 }[view];
     let next;
     if (view === 'week') next = addDays(anchor, 7 * dir);
+    else if (view === 'week2') next = addDays(anchor, 14 * dir);
     else if (months) next = addMonths(startOfMonth(anchor), months * dir);
     else next = addDays(anchor, dir);
     if (todayISO && view !== 'day') {
