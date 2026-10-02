@@ -395,6 +395,16 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
   transform: translateX(-50%);
 }
 
+/* embedded inside another app (Mission Possible's Calendar tab): no banner, no
+   footer, see-through background so the host's panel colour shows */
+.embed body { background: transparent; }
+.embed body::before { display: none; }
+.embed .wrap { padding: 12px; gap: 12px; max-width: none; }
+.embed .hero { min-height: 0; padding: 0; background: none; clip-path: none; justify-content: flex-end; }
+.embed .hero canvas, .embed .hero h1, .embed .hero::before { display: none; }
+.embed .foot { display: none; }
+.embed .bar { background: var(--asphalt-hi); }
+
 @media (max-width: 640px) {
   .wrap { padding: 12px 12px 32px; gap: 12px; }
   .hero { min-height: 112px; padding: 12px; }
@@ -510,6 +520,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
   'use strict';
   const C = window.EasyCore;
   const $ = (id) => document.getElementById(id);
+  if (new URLSearchParams(location.search).get('embed') === '1') document.documentElement.classList.add('embed');
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (ch) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const todayISO = () => C.toISO(new Date());
