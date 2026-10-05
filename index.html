@@ -200,7 +200,7 @@ svg { display: block; flex: none; }
 .views {
   flex-basis: 100%;
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 1px;
   border: 1px solid var(--line);
   background: var(--line);
@@ -415,7 +415,6 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
   .add-btn { min-height: 46px; padding: 0 14px 0 12px; font-size: 16px; }
   .month-title { font-size: 26px; min-width: 0; }
   .views { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .views button:last-child { grid-column: span 2; }
   .views button { font-size: 13px; letter-spacing: .04em; }
   .switch { margin-left: 0; }
   .day { grid-template-columns: 64px minmax(0, 1fr); }
@@ -460,6 +459,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
       <span class="track" aria-hidden="true"></span>Show all days
     </button>
     <div class="views" id="views" role="group" aria-label="How much to show">
+      <button type="button" data-view="day">Day</button>
       <button type="button" data-view="week">Week</button>
       <button type="button" data-view="week2">2 weeks</button>
       <button type="button" data-view="month">Month</button>
@@ -544,8 +544,8 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
   } catch (e) { storage = null; }
   const store = C.createStore({ storage, key: 'easycal.simple.v1' });
 
-  const VIEW_KEYS = ['week', 'week2', 'month', 'month2', 'month3', 'month6', 'year'];
-  const PERIOD = { week: 'this week', week2: 'these two weeks', month: 'this month', month2: 'these two months', month3: 'these three months', month6: 'these six months', year: 'this year' };
+  const VIEW_KEYS = ['day', 'week', 'week2', 'month', 'month2', 'month3', 'month6', 'year'];
+  const PERIOD = { day: 'today', week: 'this week', week2: 'these two weeks', month: 'this month', month2: 'these two months', month3: 'these three months', month6: 'these six months', year: 'this year' };
   const ui = { anchor: todayISO(), editId: null };
   const view = () => (VIEW_KEYS.includes(store.settings().view) ? store.settings().view : 'month');
   const range = () => C.rangeFor(view(), ui.anchor, WEEK_START);
@@ -558,6 +558,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     const a = C.fromISO(r.start);
     const b = C.fromISO(r.end);
     const sameYear = a.getFullYear() === b.getFullYear();
+    if (v === 'day') return C.fmtDateLong(r.start);
     if (v === 'week' || v === 'week2') {
       return `${a.getDate()} ${C.MON_SHORT[a.getMonth()]} – ${b.getDate()} ${C.MON_SHORT[b.getMonth()]}${sameYear ? '' : ` ${b.getFullYear()}`}`;
     }
@@ -586,7 +587,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     });
 
     let html;
-    if (!showAll) html = list(byDay, today, v);
+    if (!showAll || v === 'day') html = list(byDay, today, v);
     else if (v === 'week' || v === 'week2') html = weekGrid(r, byDay, today);
     else if (v === 'month6' || v === 'year') html = minis(r, byDay, today);
     else {
@@ -600,9 +601,9 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
   // only the days that have something on
   function list(byDay, today, v) {
     if (!byDay.size) {
-      return `<div class="empty"><b>Nothing on</b>No events ${PERIOD[v]}. Tap <strong>Add event</strong> to add one.</div>`;
+      return `<div class="empty"><b>Nothing on</b>No events ${v === 'day' && ui.anchor !== today ? 'on this day' : PERIOD[v]}. Tap <strong>Add event</strong> to add one.</div>`;
     }
-    const heads = v !== 'week';
+    const heads = v !== 'day' && v !== 'week';
     let lastMonth = '';
     let html = '<div class="days">';
     byDay.forEach((occ, iso) => {
