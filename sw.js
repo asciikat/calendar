@@ -1,7 +1,7 @@
 /* Easy Cal offline support. Network first, so an update is never stuck behind
    an old cache; the cache only answers when the network can't. */
-const CACHE = 'easycal-v3';
-const SHELL = ['./', 'index.html', 'core.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
+const CACHE = 'easycal-v4';
+const SHELL = ['./', 'index.html', 'core.js', 'sync.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
