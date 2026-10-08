@@ -25,7 +25,7 @@
     sound: false,
     defaultDuration: 60,
     focusMin: 25,
-    view: 'day',
+    view: 'month',
     filter: 'next',
     full: false,
   });

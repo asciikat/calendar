@@ -3,6 +3,9 @@
 A simple calendar. Single page: `index.html` (logic in `core.js`). It also shows as the
 Ezycal tab inside Mission Possible Plus.
 
+## Day planner
+**Day** shows one day hour by hour. Timed events are blocks sized by how long they take (pick **How long** when adding one), overlaps sit side by side, untimed events sit in an **All day** strip, and a pink line marks now. Tap an empty hour (top half = :00, bottom half = :30) to add an event at that time.
+
 ## Data
 Saved in this browser. **Save backup** and **Load backup** (bottom of the page) move events
 between devices by hand; loading merges.
