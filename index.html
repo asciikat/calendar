@@ -200,7 +200,7 @@ svg { display: block; flex: none; }
 .views {
   flex-basis: 100%;
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 1px;
   border: 1px solid var(--line);
   background: var(--line);
@@ -415,7 +415,6 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
   .add-btn { min-height: 46px; padding: 0 14px 0 12px; font-size: 16px; }
   .month-title { font-size: 26px; min-width: 0; }
   .views { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .views button:last-child { grid-column: span 2; }
   .views button { font-size: 13px; letter-spacing: .04em; }
   .switch { margin-left: 0; }
   .day { grid-template-columns: 64px minmax(0, 1fr); }
@@ -429,6 +428,36 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
   .chip em, .chip span { display: none; }
   .more { font-size: 10px; padding: 0 2px; }
 }
+
+/* ── day planner ── */
+.planner { border: 1px solid var(--line); background: var(--asphalt); }
+.allday { display: flex; flex-direction: column; gap: 6px; padding: 8px 8px 8px 64px; border-bottom: 1px solid var(--line); }
+.allday-label { margin: 0 0 -2px -56px; font: 800 12px/1 var(--font-hud); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.allday .event { grid-template-columns: minmax(0, 1fr); min-height: 40px; padding-left: 10px; }
+.slots { position: relative; }
+.slot {
+  display: block; width: 100%; height: var(--hh); padding: 0; border: 0;
+  border-top: 1px solid var(--line); background: transparent; position: relative; cursor: cell;
+}
+.slot:first-child { border-top: 0; }
+.slot:hover { background: rgba(255, 255, 255, .03); }
+.slot-h { position: absolute; left: 0; top: 4px; width: 56px; text-align: right; padding-right: 10px; font: 800 12px/1 var(--font-hud); letter-spacing: .06em; color: var(--dim); text-transform: uppercase; }
+.slot::after { content: ""; position: absolute; left: 56px; right: 0; top: 50%; border-top: 1px dotted rgba(236, 222, 255, .06); }
+.blocks { position: absolute; left: 60px; right: 6px; top: 0; bottom: 0; pointer-events: none; }
+.block {
+  position: absolute; pointer-events: auto; overflow: hidden; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 2px; padding: 4px 8px; text-align: left;
+  border: 0; border-left: 3px solid var(--t); background: color-mix(in srgb, var(--t) 22%, var(--asphalt));
+  color: var(--ink); box-shadow: 0 0 0 1px var(--asphalt);
+}
+.block:hover { filter: brightness(1.15); }
+.block-time { font: 800 11px/1.1 var(--font-hud); letter-spacing: .08em; text-transform: uppercase; color: var(--t); white-space: nowrap; }
+.block-title { font: 700 15px/1.2 var(--font-body); overflow-wrap: anywhere; }
+.block.is-short { flex-direction: row; align-items: center; gap: 8px; padding-top: 0; padding-bottom: 0; }
+.block.is-short .block-title { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.block.is-past { opacity: .55; }
+.now-line { position: absolute; left: 52px; right: 0; height: 0; border-top: 2px solid var(--neon); pointer-events: none; z-index: 2; }
+.now-line::before { content: ""; position: absolute; left: -1px; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: var(--neon); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
 }
@@ -460,6 +489,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
       <span class="track" aria-hidden="true"></span>Show all days
     </button>
     <div class="views" id="views" role="group" aria-label="How much to show">
+      <button type="button" data-view="day">Day</button>
       <button type="button" data-view="week">Week</button>
       <button type="button" data-view="week2">2 weeks</button>
       <button type="button" data-view="month">Month</button>
@@ -508,6 +538,9 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
         </select>
       </label>
     </div>
+    <label class="field"><span>How long <small>optional, needs a time</small></span>
+      <select name="duration"><option value="">Usual (1 hour)</option></select>
+    </label>
     <p class="err" id="err" role="alert"></p>
     <div class="form-foot">
       <div><button class="btn btn--quiet" type="button" id="delete">Delete</button></div>
@@ -544,9 +577,12 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
   } catch (e) { storage = null; }
   const store = C.createStore({ storage, key: 'easycal.simple.v1' });
 
-  const VIEW_KEYS = ['week', 'week2', 'month', 'month2', 'month3', 'month6', 'year'];
-  const PERIOD = { week: 'this week', week2: 'these two weeks', month: 'this month', month2: 'these two months', month3: 'these three months', month6: 'these six months', year: 'this year' };
-  const ui = { anchor: todayISO(), editId: null };
+  const VIEW_KEYS = ['day', 'week', 'week2', 'month', 'month2', 'month3', 'month6', 'year'];
+  const PERIOD = { day: 'today', week: 'this week', week2: 'these two weeks', month: 'this month', month2: 'these two months', month3: 'these three months', month6: 'these six months', year: 'this year' };
+  const ui = { anchor: todayISO(), editId: null, focusNow: false };
+  const clock24 = () => !!store.settings().clock24;
+  const fmt = (min) => C.fmtTime(min, clock24());
+  const HOUR_PX = 56;
   const view = () => (VIEW_KEYS.includes(store.settings().view) ? store.settings().view : 'month');
   const range = () => C.rangeFor(view(), ui.anchor, WEEK_START);
 
@@ -558,6 +594,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     const a = C.fromISO(r.start);
     const b = C.fromISO(r.end);
     const sameYear = a.getFullYear() === b.getFullYear();
+    if (v === 'day') return `${C.WD_SHORT[a.getDay()]} ${a.getDate()} ${C.MON_SHORT[a.getMonth()]}${sameYear ? '' : ` ${a.getFullYear()}`}`;
     if (v === 'week' || v === 'week2') {
       return `${a.getDate()} ${C.MON_SHORT[a.getMonth()]} – ${b.getDate()} ${C.MON_SHORT[b.getMonth()]}${sameYear ? '' : ` ${b.getFullYear()}`}`;
     }
@@ -578,6 +615,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
     const showAll = !!store.settings().full;
     $('all-days').setAttribute('aria-checked', String(showAll));
+    $('all-days').hidden = v === 'day';
 
     const byDay = new Map();
     C.occurrences(store.all(), r.start, r.end).forEach((o) => {
@@ -586,7 +624,8 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     });
 
     let html;
-    if (!showAll) html = list(byDay, today, v);
+    if (v === 'day') html = planner(r.start, byDay.get(r.start) || [], today);
+    else if (!showAll) html = list(byDay, today, v);
     else if (v === 'week' || v === 'week2') html = weekGrid(r, byDay, today);
     else if (v === 'month6' || v === 'year') html = minis(r, byDay, today);
     else {
@@ -595,6 +634,56 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
       html += '</div>';
     }
     $('cal').innerHTML = html;
+    if (ui.focusNow) {
+      ui.focusNow = false;
+      const mark = document.querySelector('.now-line') || document.querySelector('.block');
+      if (mark && mark.scrollIntoView) mark.scrollIntoView({ block: 'center' });
+    }
+  }
+
+  // one day, hour by hour: untimed things on top, timed things as blocks sized by how long they take
+  function planner(iso, occ, today) {
+    const timed = [];
+    const anyTime = [];
+    occ.forEach((o) => (C.isTimed(o.item) ? timed : anyTime).push(o));
+    const nowDate = new Date();
+    const nowMin = iso === today ? C.minutesOfDay(nowDate) : null;
+    const blocks = timed.map((o) => {
+      const s = C.timeToMin(o.item.time);
+      return { o, s, e: Math.min(1440, s + C.durationOf(o.item)) };
+    }).sort((a, b) => a.s - b.s || a.e - b.e);
+    // show 7am–9pm by default, stretching to fit anything outside it (and the clock if it's today)
+    let first = 7;
+    let last = 21;
+    blocks.forEach((b) => { first = Math.min(first, Math.floor(b.s / 60)); last = Math.max(last, Math.ceil(b.e / 60)); });
+    if (nowMin != null) { first = Math.min(first, Math.floor(nowMin / 60)); last = Math.max(last, Math.floor(nowMin / 60) + 1); }
+    last = Math.min(24, Math.max(last, first + 1));
+    const top = (min) => ((min - first * 60) / 60) * HOUR_PX;
+
+    let html = '<div class="planner">';
+    if (anyTime.length) {
+      html += `<div class="allday"><p class="allday-label">All day</p>${anyTime.map((o) => `<button class="event" type="button" data-type="${o.item.type}" data-id="${esc(o.item.id)}"><span class="event-title">${esc(o.item.title)}${o.dayCount > 1 ? ` <small>(${o.dayIndex} of ${o.dayCount})</small>` : ''}</span></button>`).join('')}</div>`;
+    }
+    html += `<div class="slots" style="--hh:${HOUR_PX}px">`;
+    for (let h = first; h < last; h++) {
+      html += `<button class="slot" type="button" data-slot="${iso}" data-hour="${h}" aria-label="Add an event at ${fmt(h * 60)}"><span class="slot-h">${fmt(h * 60)}</span></button>`;
+    }
+    const lanes = C.assignLanes(blocks);
+    html += '<div class="blocks">';
+    blocks.forEach((b, i) => {
+      const it = b.o.item;
+      const h = Math.max(24, ((b.e - b.s) / 60) * HOUR_PX - 2);
+      const lane = lanes.lanes[i];
+      const w = 100 / lanes.count;
+      const cls = ['block'];
+      if (h < 44) cls.push('is-short');
+      if (nowMin != null && b.e <= nowMin) cls.push('is-past');
+      const span = `${fmt(b.s)}–${fmt(b.e)}`;
+      html += `<button class="${cls.join(' ')}" type="button" data-type="${it.type}" data-id="${esc(it.id)}" style="top:${top(b.s)}px;height:${h}px;left:${lane * w}%;width:calc(${w}% - 2px)" aria-label="${esc(it.title)}, ${span}"><span class="block-time">${fmt(b.s)}${h >= 44 ? `–${fmt(b.e)}` : ''}</span><span class="block-title">${esc(it.title)}</span></button>`;
+    });
+    html += '</div>';
+    if (nowMin != null) html += `<div class="now-line" style="top:${top(nowMin)}px" aria-hidden="true"></div>`;
+    return `${html}</div></div>`;
   }
 
   // only the days that have something on
@@ -699,6 +788,14 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
   $('cal').addEventListener('click', (e) => {
     const ev = e.target.closest('[data-id]');
     if (ev) { openForm(ev.dataset.id); return; }
+    const slot = e.target.closest('[data-slot]');
+    if (slot) {
+      // top half of the hour slot = :00, bottom half = :30
+      const rect = slot.getBoundingClientRect();
+      const half = e.clientY - rect.top > rect.height / 2 ? 30 : 0;
+      openForm(null, slot.dataset.slot, C.minToTime(Number(slot.dataset.hour) * 60 + half));
+      return;
+    }
     const day = e.target.closest('[data-day]');
     if (day) { openForm(null, day.dataset.day); return; }
     // in the small month cards, a day with events opens its week; an empty day adds one
@@ -721,24 +818,33 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     const r = range();
     const today = todayISO();
     ui.anchor = r.start <= today && today <= r.end ? today : r.start;
+    ui.focusNow = b.dataset.view === 'day';
     store.setSettings({ view: b.dataset.view });
   }));
   $('prev').addEventListener('click', () => { ui.anchor = C.stepAnchor(view(), ui.anchor, -1, todayISO(), WEEK_START); render(); });
   $('next').addEventListener('click', () => { ui.anchor = C.stepAnchor(view(), ui.anchor, 1, todayISO(), WEEK_START); render(); });
-  $('today').addEventListener('click', () => { ui.anchor = todayISO(); render(); });
+  $('today').addEventListener('click', () => { ui.anchor = todayISO(); ui.focusNow = view() === 'day'; render(); });
   $('all-days').addEventListener('click', () => store.setSettings({ full: !store.settings().full }));
   store.subscribe(render);
 
   // ── add / edit form ────────────────────────────────────────────────────
   const dlg = $('dlg');
   const form = $('form');
-  function openForm(id, date) {
+  const DURATIONS = [15, 30, 45, 60, 90, 120, 180, 240];
+  function fillDurations(cur) {
+    const sel = form.duration;
+    const list = cur && !DURATIONS.includes(cur) ? [...DURATIONS, cur].sort((a, b) => a - b) : DURATIONS;
+    sel.innerHTML = `<option value="">Usual (${C.fmtDuration(C.DEFAULT_DURATION)})</option>${list.map((m) => `<option value="${m}">${C.fmtDuration(m)}</option>`).join('')}`;
+    sel.value = cur ? String(cur) : '';
+  }
+  function openForm(id, date, time) {
     const it = id ? store.get(id) : null;
     ui.editId = it ? it.id : null;
     form.title.value = it ? it.title : '';
     form.date.value = it ? it.date : (date || todayISO());
     form.endDate.value = (it && it.endDate) || '';
-    form.time.value = (it && it.time) || '';
+    form.time.value = (it && it.time) || time || '';
+    fillDurations(it && it.durationMin);
     form.type.value = it ? it.type : 'personal';
     $('dlg-title').textContent = it ? 'Edit event' : 'New event';
     $('delete').hidden = !it;
@@ -755,7 +861,9 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     if (!date) { $('err').textContent = 'Pick a date.'; form.date.focus(); return; }
     if (endDate && endDate < date) { $('err').textContent = 'The end date is before the start date.'; return; }
     if (endDate === date) endDate = null;
-    const fields = { title, date, endDate, time: form.time.value || null, type: form.type.value };
+    const time = form.time.value || null;
+    const durationMin = time && !endDate && form.duration.value ? Number(form.duration.value) : null;
+    const fields = { title, date, endDate, time, durationMin, type: form.type.value };
     if (ui.editId) store.update(ui.editId, fields);
     else store.add(fields);
     // if the event is outside what's on screen, jump there so you see it land
@@ -867,6 +975,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
   else paintSky();
 
   render();
+  setInterval(() => { if (view() === 'day' && !dlg.open) render(); }, 60000);
   if (window.EasySync) {
     EasySync.attach({ store, toast, box: $('sync-box'), statusEl: $('sync-status'), btn: $('sync-btn') });
   }
