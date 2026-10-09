@@ -220,6 +220,23 @@ svg { display: block; flex: none; }
 .views button:hover { color: var(--ink); }
 .views button[aria-pressed="true"] { color: var(--ink); background: color-mix(in srgb, var(--neon) 12%, var(--asphalt)); }
 .views button[aria-pressed="true"]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 3px; background: var(--neon); }
+.planner { margin-top: 18px; border: 1px solid var(--line); background: var(--asphalt); }
+.plan-allday { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-bottom: 1px solid var(--line); }
+.plan-allday:empty { display: none; }
+.plan-body { --hour: 48px; position: relative; height: calc(24 * var(--hour)); }
+.plan-label { position: absolute; left: 0; width: 52px; transform: translateY(-50%); padding-right: 8px; text-align: right; font: 800 11px/1 var(--font-hud); letter-spacing: .06em; text-transform: uppercase; color: var(--smog); }
+.plan-line { position: absolute; left: 60px; right: 0; border-top: 1px solid var(--line); pointer-events: none; }
+.plan-slot { position: absolute; left: 60px; right: 0; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.plan-slot:hover, .plan-slot:focus-visible { background: color-mix(in srgb, var(--neon) 6%, transparent); }
+.plan-lanes { position: absolute; top: 0; bottom: 0; left: 60px; right: 6px; pointer-events: none; }
+.plan-ev { position: absolute; display: flex; flex-direction: column; gap: 2px; overflow: hidden; padding: 4px 6px; border: 0; border-left: 3px solid var(--t); background: var(--t-bg); color: var(--ink); text-align: left; font: 700 13px/1.2 var(--font-body); pointer-events: auto; }
+.plan-ev:hover { filter: brightness(1.15); }
+.plan-ev em { font: 800 11px/1 var(--font-hud); letter-spacing: .06em; font-style: normal; color: var(--t); }
+.plan-ev span { overflow-wrap: anywhere; }
+.fs-btn { margin-left: auto; }
+.fs-btn .ico-exit { display: none; }
+.fs-btn[aria-pressed="true"] .ico-enter { display: none; }
+.fs-btn[aria-pressed="true"] .ico-exit { display: block; }
 .month-head { margin: 14px 0 0; font: 900 22px/1 var(--font-display); text-transform: uppercase; color: var(--dusk-ink); }
 .month-head:first-child { margin-top: 0; }
 .stack { display: flex; flex-direction: column; gap: 18px; }
@@ -458,6 +475,10 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     <button class="switch" type="button" id="all-days" role="switch" aria-checked="false">
       <span class="track" aria-hidden="true"></span>Show all days
     </button>
+    <button class="icon-btn fs-btn" type="button" id="fullscreen" aria-label="Full screen" aria-pressed="false" title="Full screen" hidden>
+      <svg class="ico-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      <svg class="ico-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+    </button>
     <div class="views" id="views" role="group" aria-label="How much to show">
       <button type="button" data-view="day">Day</button>
       <button type="button" data-view="week">Week</button>
@@ -587,7 +608,8 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     });
 
     let html;
-    if (!showAll || v === 'day') html = list(byDay, today, v);
+    if (v === 'day') html = list(byDay, today, v) + planner(byDay.get(r.start) || [], r.start);
+    else if (!showAll) html = list(byDay, today, v);
     else if (v === 'week' || v === 'week2') html = weekGrid(r, byDay, today);
     else if (v === 'month6' || v === 'year') html = minis(r, byDay, today);
     else {
@@ -622,6 +644,55 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
       </div>`;
     });
     return `${html}</div>`;
+  }
+
+  // a day as an hour-by-hour timeline: untimed things on top, timed ones placed by
+  // their start and length (overlaps sit side by side); tap an empty half hour to add
+  function planner(occs, iso) {
+    const HOUR = 48;
+    const allDay = occs.filter((o) => !o.item.time);
+    const timed = occs.filter((o) => o.item.time).map((o) => {
+      const s = o.dayIndex > 1 ? 0 : C.timeToMin(o.item.time);
+      const e = o.dayIndex > 1 ? 1440 : Math.min(1440, Math.max(s + C.durationOf(o.item), s + 30));
+      return { o, s, e };
+    }).sort((a, b) => a.s - b.s || b.e - a.e);
+
+    // group overlapping items, then give each one a column inside its group
+    const groups = [];
+    let group = [];
+    let groupEnd = -1;
+    timed.forEach((t) => {
+      if (group.length && t.s >= groupEnd) { groups.push(group); group = []; }
+      group.push(t);
+      groupEnd = Math.max(groupEnd, t.e);
+    });
+    if (group.length) groups.push(group);
+    groups.forEach((g) => {
+      const cols = [];
+      g.forEach((t) => {
+        let c = cols.findIndex((end) => end <= t.s);
+        if (c < 0) c = cols.push(t.e) - 1;
+        else cols[c] = t.e;
+        t.col = c;
+      });
+      g.forEach((t) => { t.cols = cols.length; });
+    });
+
+    let html = '<div class="planner">';
+    html += `<div class="plan-allday">${allDay.map((o) => `<button class="event" type="button" data-type="${o.item.type}" data-id="${esc(o.item.id)}">
+          <span class="event-time">${timeLabel(o.item, o)}</span><span class="event-title">${esc(o.item.title)}</span></button>`).join('')}</div>`;
+    html += `<div class="plan-body">`;
+    for (let h = 0; h < 24; h++) {
+      html += `<span class="plan-label" style="top:${h * HOUR}px">${C.fmtTime(h * 60)}</span><span class="plan-line" style="top:${h * HOUR}px"></span>`;
+    }
+    for (let k = 0; k < 48; k++) {
+      html += `<button class="plan-slot" type="button" data-slot-day="${iso}" data-slot-time="${C.minToTime(k * 30)}" style="top:${k * HOUR / 2}px;height:${HOUR / 2}px" aria-label="Add at ${C.fmtTime(k * 30)}"></button>`;
+    }
+    html += '<div class="plan-lanes">';
+    timed.forEach((t) => {
+      html += `<button class="plan-ev" type="button" data-type="${t.o.item.type}" data-id="${esc(t.o.item.id)}" style="top:${t.s / 60 * HOUR}px;height:${(t.e - t.s) / 60 * HOUR}px;left:${t.col / t.cols * 100}%;width:${100 / t.cols}%"><em>${timeLabel(t.o.item, t.o)}</em><span>${esc(t.o.item.title)}</span></button>`;
+    });
+    return `${html}</div></div></div>`;
   }
 
   function cell(iso, byDay, today, label) {
@@ -700,6 +771,8 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
   $('cal').addEventListener('click', (e) => {
     const ev = e.target.closest('[data-id]');
     if (ev) { openForm(ev.dataset.id); return; }
+    const slot = e.target.closest('[data-slot-day]');
+    if (slot) { openForm(null, slot.dataset.slotDay, slot.dataset.slotTime); return; }
     const day = e.target.closest('[data-day]');
     if (day) { openForm(null, day.dataset.day); return; }
     // in the small month cards, a day with events opens its week; an empty day adds one
@@ -730,16 +803,32 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
   $('all-days').addEventListener('click', () => store.setSettings({ full: !store.settings().full }));
   store.subscribe(render);
 
+  // full screen: hidden where the browser can't do it (e.g. iPhone Safari)
+  const fsBtn = $('fullscreen');
+  if (document.fullscreenEnabled) {
+    fsBtn.hidden = false;
+    fsBtn.addEventListener('click', () => {
+      const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+      p.catch(() => {});
+    });
+    document.addEventListener('fullscreenchange', () => {
+      const on = !!document.fullscreenElement;
+      fsBtn.setAttribute('aria-pressed', String(on));
+      fsBtn.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen');
+      fsBtn.title = on ? 'Exit full screen' : 'Full screen';
+    });
+  }
+
   // ── add / edit form ────────────────────────────────────────────────────
   const dlg = $('dlg');
   const form = $('form');
-  function openForm(id, date) {
+  function openForm(id, date, time) {
     const it = id ? store.get(id) : null;
     ui.editId = it ? it.id : null;
     form.title.value = it ? it.title : '';
     form.date.value = it ? it.date : (date || todayISO());
     form.endDate.value = (it && it.endDate) || '';
-    form.time.value = (it && it.time) || '';
+    form.time.value = it ? (it.time || '') : (time || '');
     form.type.value = it ? it.type : 'personal';
     $('dlg-title').textContent = it ? 'Edit event' : 'New event';
     $('delete').hidden = !it;
