@@ -223,7 +223,7 @@ svg { display: block; flex: none; }
 .planner { margin-top: 18px; border: 1px solid var(--line); background: var(--asphalt); }
 .plan-allday { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-bottom: 1px solid var(--line); }
 .plan-allday:empty { display: none; }
-.plan-body { --hour: 48px; position: relative; height: calc(24 * var(--hour)); }
+.plan-body { position: relative; }
 .plan-label { position: absolute; left: 0; width: 52px; transform: translateY(-50%); padding-right: 8px; text-align: right; font: 800 11px/1 var(--font-hud); letter-spacing: .06em; text-transform: uppercase; color: var(--smog); }
 .plan-line { position: absolute; left: 60px; right: 0; border-top: 1px solid var(--line); pointer-events: none; }
 .plan-slot { position: absolute; left: 60px; right: 0; padding: 0; border: 0; background: transparent; cursor: pointer; }
@@ -567,7 +567,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
 
   const VIEW_KEYS = ['day', 'week', 'week2', 'month', 'month2', 'month3', 'month6', 'year'];
   const PERIOD = { day: 'today', week: 'this week', week2: 'these two weeks', month: 'this month', month2: 'these two months', month3: 'these three months', month6: 'these six months', year: 'this year' };
-  const ui = { anchor: todayISO(), editId: null };
+  const ui = { anchor: todayISO(), editId: null, scroll: true };
   const view = () => (VIEW_KEYS.includes(store.settings().view) ? store.settings().view : 'month');
   const range = () => C.rangeFor(view(), ui.anchor, WEEK_START);
 
@@ -618,6 +618,23 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
       html += '</div>';
     }
     $('cal').innerHTML = html;
+    if (ui.scroll) { ui.scroll = false; scrollToRelevant(v, showAll); }
+  }
+
+  // the list opens on today (or the next day with something on), with earlier days tucked
+  // above; only when the user moves around, never when a sync or an edit redraws it
+  function scrollToRelevant(v, showAll) {
+    $('cal').style.paddingBottom = '';
+    if (v === 'day' || showAll) return;
+    const el = document.querySelector('#cal .day.is-today') || document.querySelector('#cal .day:not(.is-past)') || document.querySelector('#cal .day');
+    if (!el) return;
+    const head = el.previousElementSibling;
+    const target = head && head.classList.contains('month-head') ? head : el;
+    const want = Math.max(0, target.getBoundingClientRect().top + window.scrollY - 8);
+    // a short list can't scroll that far: add just enough room below so today still lands on top
+    const spare = document.documentElement.scrollHeight - window.innerHeight;
+    if (want > spare) $('cal').style.paddingBottom = `${Math.ceil(want - spare)}px`;
+    window.scrollTo({ top: want });
   }
 
   // only the days that have something on
@@ -650,12 +667,19 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
   // their start and length (overlaps sit side by side); tap an empty half hour to add
   function planner(occs, iso) {
     const HOUR = 48;
-    const allDay = occs.filter((o) => !o.item.time);
-    const timed = occs.filter((o) => o.item.time).map((o) => {
-      const s = o.dayIndex > 1 ? 0 : C.timeToMin(o.item.time);
-      const e = o.dayIndex > 1 ? 1440 : Math.min(1440, Math.max(s + C.durationOf(o.item), s + 30));
-      return { o, s, e };
+    // days an item runs on after its first have no start time of their own: keep them up top
+    const isTimedToday = (o) => o.item.time && o.dayIndex === 1;
+    const allDay = occs.filter((o) => !isTimedToday(o));
+    const timed = occs.filter(isTimedToday).map((o) => {
+      const s = C.timeToMin(o.item.time);
+      return { o, s, e: Math.min(1440, Math.max(s + C.durationOf(o.item), s + 30)) };
     }).sort((a, b) => a.s - b.s || b.e - a.e);
+
+    // the schedule opens on the first thing of the day and runs a little past the last
+    // (nothing timed: a working-day window, so there is still somewhere to tap to add)
+    const startH = timed.length ? Math.floor(timed[0].s / 60) : 8;
+    const lastEnd = timed.reduce((m, t) => Math.max(m, t.e), 0);
+    const endH = Math.min(24, Math.max(startH + 8, Math.ceil(lastEnd / 60) + 1));
 
     // group overlapping items, then give each one a column inside its group
     const groups = [];
@@ -681,16 +705,16 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     let html = '<div class="planner">';
     html += `<div class="plan-allday">${allDay.map((o) => `<button class="event" type="button" data-type="${o.item.type}" data-id="${esc(o.item.id)}">
           <span class="event-time">${timeLabel(o.item, o)}</span><span class="event-title">${esc(o.item.title)}</span></button>`).join('')}</div>`;
-    html += `<div class="plan-body">`;
-    for (let h = 0; h < 24; h++) {
-      html += `<span class="plan-label" style="top:${h * HOUR}px">${C.fmtTime(h * 60)}</span><span class="plan-line" style="top:${h * HOUR}px"></span>`;
+    html += `<div class="plan-body" style="height:${(endH - startH) * HOUR}px">`;
+    for (let h = startH; h < endH; h++) {
+      html += `<span class="plan-label" style="top:${(h - startH) * HOUR}px">${C.fmtTime(h * 60)}</span><span class="plan-line" style="top:${(h - startH) * HOUR}px"></span>`;
     }
-    for (let k = 0; k < 48; k++) {
-      html += `<button class="plan-slot" type="button" data-slot-day="${iso}" data-slot-time="${C.minToTime(k * 30)}" style="top:${k * HOUR / 2}px;height:${HOUR / 2}px" aria-label="Add at ${C.fmtTime(k * 30)}"></button>`;
+    for (let k = startH * 2; k < endH * 2; k++) {
+      html += `<button class="plan-slot" type="button" data-slot-day="${iso}" data-slot-time="${C.minToTime(k * 30)}" style="top:${(k - startH * 2) * HOUR / 2}px;height:${HOUR / 2}px" aria-label="Add at ${C.fmtTime(k * 30)}"></button>`;
     }
     html += '<div class="plan-lanes">';
     timed.forEach((t) => {
-      html += `<button class="plan-ev" type="button" data-type="${t.o.item.type}" data-id="${esc(t.o.item.id)}" style="top:${t.s / 60 * HOUR}px;height:${(t.e - t.s) / 60 * HOUR}px;left:${t.col / t.cols * 100}%;width:${100 / t.cols}%"><em>${timeLabel(t.o.item, t.o)}</em><span>${esc(t.o.item.title)}</span></button>`;
+      html += `<button class="plan-ev" type="button" data-type="${t.o.item.type}" data-id="${esc(t.o.item.id)}" style="top:${(t.s - startH * 60) / 60 * HOUR}px;height:${(t.e - t.s) / 60 * HOUR}px;left:${t.col / t.cols * 100}%;width:${100 / t.cols}%"><em>${timeLabel(t.o.item, t.o)}</em><span>${esc(t.o.item.title)}</span></button>`;
     });
     return `${html}</div></div></div>`;
   }
@@ -780,6 +804,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     if (md) {
       if (md.classList.contains('has')) {
         ui.anchor = md.dataset.mini;
+        ui.scroll = true;
         store.setSettings({ view: 'week', full: false });
       } else openForm(null, md.dataset.mini);
       return;
@@ -787,6 +812,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     const month = e.target.closest('[data-open-month]');
     if (month) {
       ui.anchor = month.dataset.openMonth;
+      ui.scroll = true;
       store.setSettings({ view: 'month' });
     }
   });
@@ -795,13 +821,14 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     const r = range();
     const today = todayISO();
     ui.anchor = r.start <= today && today <= r.end ? today : r.start;
+    ui.scroll = true;
     store.setSettings({ view: b.dataset.view });
   }));
-  $('prev').addEventListener('click', () => { ui.anchor = C.stepAnchor(view(), ui.anchor, -1, todayISO(), WEEK_START); render(); });
-  $('next').addEventListener('click', () => { ui.anchor = C.stepAnchor(view(), ui.anchor, 1, todayISO(), WEEK_START); render(); });
-  $('today').addEventListener('click', () => { ui.anchor = todayISO(); render(); });
+  $('prev').addEventListener('click', () => { ui.anchor = C.stepAnchor(view(), ui.anchor, -1, todayISO(), WEEK_START); ui.scroll = true; render(); });
+  $('next').addEventListener('click', () => { ui.anchor = C.stepAnchor(view(), ui.anchor, 1, todayISO(), WEEK_START); ui.scroll = true; render(); });
+  $('today').addEventListener('click', () => { ui.anchor = todayISO(); ui.scroll = true; render(); });
   $('all-days').addEventListener('click', () => store.setSettings({ full: !store.settings().full }));
-  store.subscribe(render);
+  store.subscribe(() => render());
 
   // full screen: hidden where the browser can't do it (e.g. iPhone Safari)
   const fsBtn = $('fullscreen');
@@ -850,7 +877,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     else store.add(fields);
     // if the event is outside what's on screen, jump there so you see it land
     const r = range();
-    if (date < r.start || date > r.end) ui.anchor = date;
+    if (date < r.start || date > r.end) { ui.anchor = date; ui.scroll = true; }
     dlg.close();
     render();
     toast(ui.editId ? 'Saved.' : `Added “${title}”.`);
