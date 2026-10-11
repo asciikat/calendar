@@ -200,6 +200,16 @@
     const span = daysBetween(it.date, itemEndDate(it));
     return { date: iso, endDate: span > 0 ? addDays(iso, span) : null };
   }
+  // where an item lands when dragged from one shown day to another: it shifts by the
+  // same number of days, so grabbing day 2 of a trip moves day 2 there. `time` undefined
+  // keeps the time, null makes it any-time, 'HH:MM' sets it (single-day items only).
+  function dropPatch(it, fromISO, toISO, time) {
+    const shift = it.date && fromISO ? daysBetween(fromISO, toISO) : 0;
+    const patch = moveToDate(it, it.date ? addDays(it.date, shift) : toISO);
+    if (time !== undefined && !patch.endDate) patch.time = time;
+    if (it.status === 'slipped') patch.status = 'open';
+    return patch;
+  }
 
   function compareItems(a, b) {
     const ta = isTimed(a) ? timeToMin(a.time) : -1;
@@ -838,7 +848,7 @@
     daysInMonth, startOfMonth, endOfMonth, addMonths, timeToMin, minToTime, minutesOfDay, atTime,
     fmtTime, fmtDuration, fmtDay, fmtDateLong, fmtShortDate,
     newId, normalizeItem, itemEndDate, isMultiDay, isTimed, isVisible, durationOf, startMs, endMs,
-    covers, dueToSlip, shiftTime, moveToDate, compareItems, occurrences,
+    covers, dueToSlip, shiftTime, moveToDate, dropPatch, compareItems, occurrences,
     rangeFor, stepAnchor, rightNow, leaveAtMs, pickCandidates,
     busyBlocks, freeGaps, findSlot, assignLanes,
     parseQuick, createStore, sanitizeSettings, mergeItems,

@@ -425,6 +425,49 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
 .embed .foot { padding: 0; }
 .embed .bar { background: var(--asphalt-hi); }
 
+/* ── drag to move ────────────────────────────────────────────────────── */
+.event, .chip, .plan-ev { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.dragging, .dragging * { cursor: grabbing !important; -webkit-user-select: none; user-select: none; }
+.is-lifted { opacity: .35; }
+.drag-ghost {
+  position: fixed;
+  z-index: 60;
+  margin: 0;
+  pointer-events: none;
+  opacity: .92;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, .6);
+  transform: rotate(-2deg);
+}
+.is-drop { box-shadow: inset 0 0 0 2px var(--palm) !important; background: rgba(46, 230, 200, .10) !important; }
+.plan-drop { position: absolute; left: 60px; right: 6px; z-index: 1; padding: 4px 6px; border: 2px dashed var(--palm); background: rgba(46, 230, 200, .10); color: var(--palm); font: 800 12px/1 var(--font-hud); letter-spacing: .06em; pointer-events: none; }
+.drop-dock {
+  position: fixed;
+  left: 50%;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  z-index: 55;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: min(520px, calc(100vw - 24px));
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: var(--asphalt-hi);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .55);
+  transform: translateX(-50%);
+}
+.drop-dock div {
+  display: grid;
+  place-items: center;
+  min-height: 52px;
+  padding: 4px;
+  border: 1px dashed rgba(255, 255, 255, .24);
+  font: 800 14px/1.1 var(--font-hud);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--smog);
+}
+
 @media (max-width: 640px) {
   .wrap { padding: 12px 12px 32px; gap: 12px; }
   .hero { min-height: 112px; padding: 12px; }
@@ -541,6 +584,12 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
 </dialog>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<!-- shown while dragging an event: drop it here to nudge it by a day or a week -->
+<div class="drop-dock" id="drop-dock" aria-hidden="true" hidden>
+  <div data-drop-shift="-1">← Day before</div>
+  <div data-drop-shift="1">Next day →</div>
+  <div data-drop-shift="7">Next week →</div>
+</div>
 
 <script src="core.js"></script>
 <!-- Optional cloud sync settings; see firebase-config.js. Missing file = sync stays off. -->
@@ -637,7 +686,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
       const cls = ['day'];
       if (iso === today) cls.push('is-today');
       if (iso < today) cls.push('is-past');
-      html += `<div class="${cls.join(' ')}">
+      html += `<div class="${cls.join(' ')}" data-drop-day="${iso}">
         <div class="day-date"><span class="day-wd">${iso === today ? 'Today' : C.WD_SHORT[d.getDay()]}</span><span class="day-num">${d.getDate()}</span></div>
         <ul class="events">${occ.map((o) => `<li><button class="event" type="button" data-type="${o.item.type}" data-id="${esc(o.item.id)}">
           <span class="event-time">${timeLabel(o.item, o)}</span><span class="event-title">${esc(o.item.title)}</span></button></li>`).join('')}</ul>
@@ -679,9 +728,9 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     });
 
     let html = '<div class="planner">';
-    html += `<div class="plan-allday">${allDay.map((o) => `<button class="event" type="button" data-type="${o.item.type}" data-id="${esc(o.item.id)}">
+    html += `<div class="plan-allday" data-drop-day="${iso}" data-drop-allday>${allDay.map((o) => `<button class="event" type="button" data-type="${o.item.type}" data-id="${esc(o.item.id)}">
           <span class="event-time">${timeLabel(o.item, o)}</span><span class="event-title">${esc(o.item.title)}</span></button>`).join('')}</div>`;
-    html += `<div class="plan-body">`;
+    html += `<div class="plan-body" data-drop-plan="${iso}">`;
     for (let h = 0; h < 24; h++) {
       html += `<span class="plan-label" style="top:${h * HOUR}px">${C.fmtTime(h * 60)}</span><span class="plan-line" style="top:${h * HOUR}px"></span>`;
     }
@@ -707,7 +756,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
       return `<button class="chip" type="button" data-type="${o.item.type}" data-id="${esc(o.item.id)}" title="${esc(o.item.title)}">${t}<span>${esc(o.item.title)}</span></button>`;
     }).join('');
     const more = occ.length > 3 ? `<span class="more">+${occ.length - 3} more</span>` : '';
-    return `<div class="${cls.join(' ')}">
+    return `<div class="${cls.join(' ')}" data-drop-day="${iso}">
       <button class="cell-num" type="button" data-day="${iso}" aria-label="${C.fmtDateLong(iso)}${iso === today ? ', today' : ''}${occ.length ? `, ${occ.length} event${occ.length > 1 ? 's' : ''}` : ''}. Add an event">${label ? `<span class="cell-mon">${C.MON_SHORT[d.getMonth()]} </span>` : ''}${d.getDate()}</button>
       ${chips}${more}</div>`;
   }
@@ -818,6 +867,186 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
       fsBtn.title = on ? 'Exit full screen' : 'Full screen';
     });
   }
+
+  // ── drag an event to another day ───────────────────────────────────────
+  // Mouse: press and move. Touch: press and hold, then move (a quick swipe still scrolls).
+  // Drop it on a day, on an hour in the day planner, on the Day before / Next day /
+  // Next week dock, or hold it over the ‹ › arrows to turn the page.
+  const dock = $('drop-dock');
+  let press = null; // a press on an event that may become a drag
+  let drag = null; // the drag in progress
+  let swallowClick = false;
+  let swallowTimer = 0;
+
+  function cancelPress() {
+    if (press) clearTimeout(press.timer);
+    press = null;
+  }
+  function startDrag(x, y) {
+    const p = press;
+    cancelPress();
+    const it = p && store.get(p.id);
+    if (!it || !p.el.isConnected) return;
+    const src = p.el.closest('[data-drop-day],[data-drop-plan]');
+    const r = p.el.getBoundingClientRect();
+    const ghost = p.el.cloneNode(true);
+    ghost.removeAttribute('data-id');
+    ghost.classList.add('drag-ghost');
+    ghost.style.width = `${Math.max(r.width, 120)}px`;
+    ghost.style.height = `${r.height}px`;
+    document.body.appendChild(ghost);
+    p.el.classList.add('is-lifted');
+    document.documentElement.classList.add('dragging');
+    $('toast').hidden = true;
+    dock.hidden = false;
+    drag = {
+      id: it.id, el: p.el, ghost, dx: p.dx, dy: p.dy, x, y,
+      from: src ? src.dataset.dropDay || src.dataset.dropPlan : it.date,
+      target: null, planMin: null, mark: null, flip: 0, flipDir: 0, raf: 0,
+    };
+    if (p.touch && navigator.vibrate) navigator.vibrate(15);
+    moveDrag(x, y);
+    drag.raf = requestAnimationFrame(autoScroll);
+  }
+  function moveDrag(x, y) {
+    drag.x = x;
+    drag.y = y;
+    drag.ghost.style.left = `${x - drag.dx}px`;
+    drag.ghost.style.top = `${y - drag.dy}px`;
+    const under = document.elementFromPoint(x, y);
+    const hit = under && under.closest('[data-drop-shift],[data-drop-plan],[data-drop-day],#prev,#next');
+    // over the planner, a single-day event snaps its top edge to the nearest quarter hour
+    let planMin = null;
+    const it = store.get(drag.id);
+    if (hit && hit.dataset.dropPlan && it && !C.isMultiDay(it)) {
+      const box = hit.getBoundingClientRect();
+      const q = Math.round(((y - drag.dy - box.top) / (box.height / 24)) * 4);
+      planMin = Math.min(1440 - 15, Math.max(0, q * 15));
+    }
+    setTarget(hit, planMin, it);
+    // hold over ‹ or › to turn the page, again every 0.7 s
+    const dir = hit && hit.id === 'next' ? 1 : hit && hit.id === 'prev' ? -1 : 0;
+    if (dir !== drag.flipDir) {
+      clearInterval(drag.flip);
+      drag.flipDir = dir;
+      drag.flip = dir ? setInterval(() => {
+        ui.anchor = C.stepAnchor(view(), ui.anchor, dir, todayISO(), WEEK_START);
+        render();
+      }, 700) : 0;
+    }
+  }
+  function setTarget(el, planMin, it) {
+    if (drag.target && drag.target !== el) drag.target.classList.remove('is-drop');
+    drag.target = el;
+    drag.planMin = planMin;
+    if (el) el.classList.toggle('is-drop', planMin == null);
+    if (drag.mark && (planMin == null || drag.mark.parentNode !== el)) {
+      drag.mark.remove();
+      drag.mark = null;
+    }
+    if (planMin == null) return;
+    if (!drag.mark) {
+      drag.mark = document.createElement('div');
+      drag.mark.className = 'plan-drop';
+      el.appendChild(drag.mark);
+    }
+    const hour = el.getBoundingClientRect().height / 24;
+    const len = Math.min(Math.max(30, it ? C.durationOf(it) : 60), 1440 - planMin);
+    drag.mark.style.top = `${(planMin / 60) * hour}px`;
+    drag.mark.style.height = `${(len / 60) * hour}px`;
+    drag.mark.textContent = C.fmtTime(planMin);
+  }
+  // near the top or bottom edge, scroll so far-off days (and late hours) can be reached
+  function autoScroll() {
+    if (!drag) return;
+    const edge = 56;
+    const bottom = dock.getBoundingClientRect().top;
+    let v = 0;
+    if (drag.y < edge) v = -(edge - drag.y) / 3;
+    else if (drag.y > bottom - edge && drag.y < bottom) v = (drag.y - (bottom - edge)) / 3;
+    if (v) {
+      window.scrollBy(0, v);
+      moveDrag(drag.x, drag.y);
+    }
+    drag.raf = requestAnimationFrame(autoScroll);
+  }
+  function stopDrag() {
+    if (!drag) return;
+    clearInterval(drag.flip);
+    cancelAnimationFrame(drag.raf);
+    if (drag.target) drag.target.classList.remove('is-drop');
+    if (drag.mark) drag.mark.remove();
+    drag.ghost.remove();
+    drag.el.classList.remove('is-lifted');
+    document.documentElement.classList.remove('dragging');
+    dock.hidden = true;
+    drag = null;
+    // the release ends in a click on whatever was underneath: don't let it open the form
+    swallowClick = true;
+  }
+  function endDrag() {
+    const d = drag;
+    const el = d.target;
+    stopDrag();
+    const it = store.get(d.id);
+    if (!it || !el || !el.isConnected) return;
+    let patch = null;
+    if (el.dataset.dropShift) patch = C.dropPatch(it, it.date, C.addDays(it.date, Number(el.dataset.dropShift)));
+    else if (el.dataset.dropPlan) patch = C.dropPatch(it, d.from, el.dataset.dropPlan, d.planMin == null ? undefined : C.minToTime(d.planMin));
+    else if (el.dataset.dropDay) patch = C.dropPatch(it, d.from, el.dataset.dropDay, 'dropAllday' in el.dataset ? null : undefined);
+    if (!patch || !Object.keys(patch).some((k) => patch[k] !== it[k])) return;
+    const before = { date: it.date, endDate: it.endDate, time: it.time, status: it.status };
+    store.update(it.id, patch);
+    const day = C.fmtDay(patch.date, todayISO());
+    const time = patch.endDate ? null : patch.time !== undefined ? patch.time : it.time;
+    const when = `${['Today', 'Tomorrow', 'Yesterday'].includes(day) ? day.toLowerCase() : day}${time ? `, ${C.fmtTime(C.timeToMin(time))}` : ''}`;
+    toast(`Moved “${it.title}” to ${when}.`, () => store.update(it.id, before));
+  }
+
+  // a new press means the stray click from the last drop isn't coming
+  document.addEventListener('pointerdown', () => { swallowClick = false; }, true);
+  $('cal').addEventListener('pointerdown', (e) => {
+    if (drag || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const el = e.target.closest('[data-id]');
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    cancelPress();
+    press = { el, id: el.dataset.id, x: e.clientX, y: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, touch: e.pointerType !== 'mouse', timer: 0 };
+    if (press.touch) press.timer = setTimeout(() => startDrag(press.x, press.y), 380);
+  });
+  document.addEventListener('pointermove', (e) => {
+    if (!e.isPrimary) return;
+    if (drag) { moveDrag(e.clientX, e.clientY); return; }
+    if (!press) return;
+    const far = Math.hypot(e.clientX - press.x, e.clientY - press.y);
+    if (press.touch) { if (far > 10) cancelPress(); } else if (far > 6) startDrag(e.clientX, e.clientY);
+  });
+  document.addEventListener('pointerup', (e) => {
+    if (drag && e.isPrimary) {
+      moveDrag(e.clientX, e.clientY);
+      endDrag();
+    }
+    cancelPress();
+    if (swallowClick) {
+      clearTimeout(swallowTimer);
+      swallowTimer = setTimeout(() => { swallowClick = false; }, 400);
+    }
+  });
+  document.addEventListener('pointercancel', () => {
+    stopDrag();
+    cancelPress();
+    swallowClick = false;
+  });
+  // keep the page still under a dragging finger, and no long-press menu
+  document.addEventListener('touchmove', (e) => { if (drag) e.preventDefault(); }, { passive: false });
+  document.addEventListener('contextmenu', (e) => { if (press || drag) e.preventDefault(); });
+  document.addEventListener('keydown', (e) => { if (drag && e.key === 'Escape') stopDrag(); });
+  document.addEventListener('click', (e) => {
+    if (!swallowClick || !e.target.closest('#cal, #prev, #next')) return;
+    swallowClick = false;
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
 
   // ── add / edit form ────────────────────────────────────────────────────
   const dlg = $('dlg');

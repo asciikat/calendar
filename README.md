@@ -3,6 +3,13 @@
 A simple calendar. Single page: `index.html` (logic in `core.js`). It also shows as the
 Ezycal tab inside Mission Possible Plus.
 
+## Moving events
+Drag an event to another day: with a mouse, press and move it; on a phone, press and hold,
+then move. Drop it on a day, or on an hour in the Day view to change its time. While
+dragging, a bar at the bottom offers **Day before**, **Next day** and **Next week**, and
+holding it over the ‹ › arrows turns the page. Every move can be undone from the message
+that pops up.
+
 ## Data
 Saved in this browser. **Save backup** and **Load backup** (bottom of the page) move events
 between devices by hand; loading merges.
