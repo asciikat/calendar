@@ -337,6 +337,21 @@ test('shiftTime rolls over midnight', () => {
   eq(C.shiftTime(item({ title: 'a', date: '2026-10-01', time: '23:50' }), 15), { date: '2026-10-02', time: '00:05' });
   eq(C.shiftTime(item({ title: 'a', date: '2026-10-01', time: '09:00' }), 15), { date: '2026-10-01', time: '09:15' });
 });
+test('dropPatch shifts by the days dragged across', () => {
+  const trip = item({ title: 'trip', date: '2026-10-01', endDate: '2026-10-03', time: '09:00' });
+  // grabbed on its 2nd day (2 Oct), dropped on 5 Oct: the whole trip moves 3 days
+  eq(C.dropPatch(trip, '2026-10-02', '2026-10-05'), { date: '2026-10-04', endDate: '2026-10-06' });
+  // a multi-day item never picks up a time
+  eq(C.dropPatch(trip, '2026-10-01', '2026-10-02', '14:00'), { date: '2026-10-02', endDate: '2026-10-04' });
+  const dentist = item({ title: 'dentist', date: '2026-10-01', time: '09:00' });
+  eq(C.dropPatch(dentist, '2026-10-01', '2026-10-02'), { date: '2026-10-02', endDate: null });
+  eq(C.dropPatch(dentist, '2026-10-01', '2026-10-01', '14:30'), { date: '2026-10-01', endDate: null, time: '14:30' });
+  eq(C.dropPatch(dentist, '2026-10-01', '2026-09-30', null), { date: '2026-09-30', endDate: null, time: null });
+});
+test('dropPatch reopens a slipped item', () => {
+  const late = item({ title: 'late', date: '2026-09-30', status: 'slipped' });
+  eq(C.dropPatch(late, '2026-09-30', '2026-10-02'), { date: '2026-10-02', endDate: null, status: 'open' });
+});
 test('moveToDate keeps a multi-day length', () => {
   eq(C.moveToDate(item({ title: 'a', date: '2026-10-01', endDate: '2026-10-03' }), '2026-10-10'), { date: '2026-10-10', endDate: '2026-10-12' });
   eq(C.moveToDate(item({ title: 'b', date: '2026-10-01' }), '2026-10-10'), { date: '2026-10-10', endDate: null });
