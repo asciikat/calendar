@@ -10,6 +10,13 @@ dragging, a bar at the bottom offers **Day before**, **Next day** and **Next wee
 holding it over the ‹ › arrows turns the page. Every move can be undone from the message
 that pops up.
 
+## Sahara skin
+Open Ezycal with `?theme=sahara` (e.g. `index.html?theme=sahara`, or `?embed=1&theme=sahara`
+inside another app) and it wears the Sahara app's look: night purple, a dotted background,
+chunky borders with hard shadows and a pixel font for headings. It's the same calendar with the
+same events and sync; only the look changes. Mission Possible Pro's Sahara section shows Ezycal
+this way. Without the parameter Ezycal looks exactly as before.
+
 ## Data
 Saved in this browser. **Save backup** and **Load backup** (bottom of the page) move events
 between devices by hand; loading merges.
