@@ -593,7 +593,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
       <button type="button" data-view="week">Week</button>
       <button type="button" data-view="week2">2 weeks</button>
       <button type="button" data-view="month">Month</button>
-      <button type="button" data-view="month2">2 months</button>
+      <button type="button" data-tomorrow>Tomorrow</button>
       <button type="button" data-view="month3">3 months</button>
       <button type="button" data-view="month6">6 months</button>
       <button type="button" data-view="year">Year</button>
@@ -680,8 +680,8 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
   } catch (e) { storage = null; }
   const store = C.createStore({ storage, key: 'easycal.simple.v1' });
 
-  const VIEW_KEYS = ['day', 'week', 'week2', 'month', 'month2', 'month3', 'month6', 'year'];
-  const PERIOD = { day: 'today', week: 'this week', week2: 'these two weeks', month: 'this month', month2: 'these two months', month3: 'these three months', month6: 'these six months', year: 'this year' };
+  const VIEW_KEYS = ['day', 'week', 'week2', 'month', 'month3', 'month6', 'year'];
+  const PERIOD = { day: 'today', week: 'this week', week2: 'these two weeks', month: 'this month', month3: 'these three months', month6: 'these six months', year: 'this year' };
   const ui = { anchor: todayISO(), editId: null, earlier: '' };
   const view = () => (VIEW_KEYS.includes(store.settings().view) ? store.settings().view : 'month');
   const range = () => C.rangeFor(view(), ui.anchor, WEEK_START);
@@ -712,7 +712,10 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     const today = todayISO();
     $('month-title').textContent = titleFor(v, r);
     $('today').classList.toggle('is-here', r.start <= today && today <= r.end);
-    document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+    // Tomorrow is the Day view parked on tomorrow, so it and Day share the one view
+    const onTomorrow = v === 'day' && r.start === C.addDays(today, 1);
+    document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v && !(v === 'day' && onTomorrow))));
+    document.querySelector('[data-tomorrow]').setAttribute('aria-pressed', String(onTomorrow));
     const showAll = !!store.settings().full;
     $('all-days').setAttribute('aria-checked', String(showAll));
 
@@ -751,7 +754,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     const toggle = n ? `<button class="link earlier" type="button" data-earlier>${earlier > 0 ? `Show ${n} earlier day${n > 1 ? 's' : ''}` : 'Hide earlier days'}</button>` : '';
     if (!byDay.size) {
       if (earlier > 0) return `${toggle}<div class="empty"><b>All clear</b>Nothing else on ${PERIOD[v]}.</div>`;
-      return `<div class="empty"><b>Nothing on</b>No events ${v === 'day' && ui.anchor !== today ? 'on this day' : PERIOD[v]}. Tap <strong>Add event</strong> to add one.</div>`;
+      return `<div class="empty"><b>Nothing on</b>No events ${v === 'day' && ui.anchor === C.addDays(today, 1) ? 'tomorrow' : v === 'day' && ui.anchor !== today ? 'on this day' : PERIOD[v]}. Tap <strong>Add event</strong> to add one.</div>`;
     }
     const heads = v !== 'day' && v !== 'week';
     let lastMonth = '';
@@ -928,9 +931,14 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     // keep looking at roughly the same time: today if it's in view, else the start of what's shown
     const r = range();
     const today = todayISO();
-    ui.anchor = r.start <= today && today <= r.end ? today : r.start;
+    // (Day always goes to today, so it also gets you back from Tomorrow)
+    ui.anchor = (r.start <= today && today <= r.end) || (b.dataset.view === 'day' && view() === 'day') ? today : r.start;
     store.setSettings({ view: b.dataset.view });
   }));
+  $('views').querySelector('[data-tomorrow]').addEventListener('click', () => {
+    ui.anchor = C.addDays(todayISO(), 1);
+    store.setSettings({ view: 'day' });
+  });
   $('prev').addEventListener('click', () => { ui.anchor = C.stepAnchor(view(), ui.anchor, -1, todayISO(), WEEK_START); render(); });
   $('next').addEventListener('click', () => { ui.anchor = C.stepAnchor(view(), ui.anchor, 1, todayISO(), WEEK_START); render(); });
   $('today').addEventListener('click', () => { ui.anchor = todayISO(); render(); });

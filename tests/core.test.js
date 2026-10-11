@@ -369,11 +369,16 @@ test('occurrences expands multi-day items inside a range and sorts', () => {
     '2026-10-01:h:3/5', '2026-10-02:h:4/5', '2026-10-02:g:1/1', '2026-10-02:d:1/1',
   ]);
 });
+test('a saved 2 months view becomes Month', () => {
+  eq(C.sanitizeSettings({ view: 'month2' }).view, 'month');
+  eq(C.sanitizeSettings({ view: 'month3' }).view, 'month3');
+  ok(!C.VIEWS.includes('month2'));
+});
 test('rangeFor each view', () => {
   eq(C.rangeFor('day', '2026-10-01', 1), { start: '2026-10-01', end: '2026-10-01' });
   eq(C.rangeFor('week', '2026-10-01', 1), { start: '2026-09-28', end: '2026-10-04' });
   eq(C.rangeFor('month', '2026-10-15', 1), { start: '2026-10-01', end: '2026-10-31' });
-  eq(C.rangeFor('month2', '2026-12-15', 1), { start: '2026-12-01', end: '2027-01-31' });
+  eq(C.rangeFor('month3', '2026-11-15', 1), { start: '2026-11-01', end: '2027-01-31' });
   eq(C.rangeFor('month3', '2026-10-15', 1), { start: '2026-10-01', end: '2026-12-31' });
   eq(C.rangeFor('year', '2026-10-15', 1), { start: '2026-01-01', end: '2026-12-31' });
 });
