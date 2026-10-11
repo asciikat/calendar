@@ -297,6 +297,7 @@ svg { display: block; flex: none; }
   text-align: center;
   color: var(--smog);
 }
+.earlier { display: block; min-height: 40px; margin: 0 auto 8px; }
 .empty b { display: block; margin-bottom: 6px; font: 900 30px/1 var(--font-display); text-transform: uppercase; color: var(--ink); }
 
 /* ── full month grid ─────────────────────────────────────────────────── */
@@ -616,7 +617,7 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
 
   const VIEW_KEYS = ['day', 'week', 'week2', 'month', 'month2', 'month3', 'month6', 'year'];
   const PERIOD = { day: 'today', week: 'this week', week2: 'these two weeks', month: 'this month', month2: 'these two months', month3: 'these three months', month6: 'these six months', year: 'this year' };
-  const ui = { anchor: todayISO(), editId: null };
+  const ui = { anchor: todayISO(), editId: null, earlier: '' };
   const view = () => (VIEW_KEYS.includes(store.settings().view) ? store.settings().view : 'month');
   const range = () => C.rangeFor(view(), ui.anchor, WEEK_START);
 
@@ -658,7 +659,16 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
 
     let html;
     if (v === 'day') html = list(byDay, today, v) + planner(byDay.get(r.start) || [], r.start);
-    else if (!showAll) html = list(byDay, today, v);
+    else if (!showAll) {
+      // when today is in view, the list starts at today; earlier days wait behind a button
+      let earlier = 0;
+      if (r.start < today && today <= r.end) {
+        byDay.forEach((occ, iso) => { if (iso < today) earlier++; });
+        if (ui.earlier !== `${v}:${r.start}`) byDay.forEach((occ, iso) => { if (iso < today) byDay.delete(iso); });
+        else earlier = -earlier;
+      }
+      html = list(byDay, today, v, earlier);
+    }
     else if (v === 'week' || v === 'week2') html = weekGrid(r, byDay, today);
     else if (v === 'month6' || v === 'year') html = minis(r, byDay, today);
     else {
@@ -669,14 +679,18 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
     $('cal').innerHTML = html;
   }
 
-  // only the days that have something on
-  function list(byDay, today, v) {
+  // only the days that have something on. `earlier` counts the event days before today:
+  // positive while they're tucked away, negative once shown
+  function list(byDay, today, v, earlier = 0) {
+    const n = Math.abs(earlier);
+    const toggle = n ? `<button class="link earlier" type="button" data-earlier>${earlier > 0 ? `Show ${n} earlier day${n > 1 ? 's' : ''}` : 'Hide earlier days'}</button>` : '';
     if (!byDay.size) {
+      if (earlier > 0) return `${toggle}<div class="empty"><b>All clear</b>Nothing else on ${PERIOD[v]}.</div>`;
       return `<div class="empty"><b>Nothing on</b>No events ${v === 'day' && ui.anchor !== today ? 'on this day' : PERIOD[v]}. Tap <strong>Add event</strong> to add one.</div>`;
     }
     const heads = v !== 'day' && v !== 'week';
     let lastMonth = '';
-    let html = '<div class="days">';
+    let html = `${toggle}<div class="days">`;
     byDay.forEach((occ, iso) => {
       const d = C.fromISO(iso);
       if (heads && iso.slice(0, 7) !== lastMonth) {
@@ -818,6 +832,12 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
   }
 
   $('cal').addEventListener('click', (e) => {
+    if (e.target.closest('[data-earlier]')) {
+      const key = `${view()}:${range().start}`;
+      ui.earlier = ui.earlier === key ? '' : key;
+      render();
+      return;
+    }
     const ev = e.target.closest('[data-id]');
     if (ev) { openForm(ev.dataset.id); return; }
     const slot = e.target.closest('[data-slot-day]');

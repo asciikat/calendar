@@ -3,6 +3,11 @@
 A simple calendar. Single page: `index.html` (logic in `core.js`). It also shows as the
 Ezycal tab inside Mission Possible Plus.
 
+## Starts at today
+When the week or month you're looking at includes today, the list starts at today. Earlier
+days stay tucked behind **Show earlier days** at the top. The **Show all days** grid is
+unchanged.
+
 ## Moving events
 Drag an event to another day: with a mouse, press and move it; on a phone, press and hold,
 then move. Drop it on a day, or on an hour in the Day view to change its time. While
