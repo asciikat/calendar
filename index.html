@@ -249,6 +249,8 @@ svg { display: block; flex: none; }
 .fs-btn[aria-pressed="true"] .ico-exit { display: block; }
 .month-head { margin: 14px 0 0; font: 900 22px/1 var(--font-display); text-transform: uppercase; color: var(--dusk-ink); }
 .month-head:first-child { margin-top: 0; }
+.sect-head { margin: 8px 0 -2px; font: 800 13px/1 var(--font-hud); letter-spacing: .16em; text-transform: uppercase; color: var(--smog); }
+.sect-head.is-tomorrow { color: var(--palm); }
 .stack { display: flex; flex-direction: column; gap: 18px; }
 .cell-mon { font: 800 10px/1 var(--font-hud); letter-spacing: .1em; text-transform: uppercase; color: var(--smog); }
 
@@ -757,6 +759,9 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
       return `<div class="empty"><b>Nothing on</b>No events ${v === 'day' && ui.anchor === C.addDays(today, 1) ? 'tomorrow' : v === 'day' && ui.anchor !== today ? 'on this day' : PERIOD[v]}. Tap <strong>Add event</strong> to add one.</div>`;
     }
     const heads = v !== 'day' && v !== 'week';
+    // tomorrow's events sit under their own heading, and "Later" picks up after them
+    const tomorrow = v === 'day' ? null : C.addDays(today, 1);
+    let afterTomorrow = false;
     let lastMonth = '';
     let html = `${toggle}<div class="days">`;
     byDay.forEach((occ, iso) => {
@@ -764,6 +769,13 @@ form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
       if (heads && iso.slice(0, 7) !== lastMonth) {
         lastMonth = iso.slice(0, 7);
         html += `<h3 class="month-head">${C.MON_LONG[d.getMonth()]} ${d.getFullYear()}</h3>`;
+      }
+      if (iso === tomorrow) {
+        html += '<h4 class="sect-head is-tomorrow">Tomorrow</h4>';
+        afterTomorrow = true;
+      } else if (afterTomorrow && iso > tomorrow) {
+        html += '<h4 class="sect-head">Later</h4>';
+        afterTomorrow = false;
       }
       const cls = ['day'];
       if (iso === today) cls.push('is-today');
