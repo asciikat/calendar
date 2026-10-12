@@ -16,7 +16,7 @@
     personal: 'Personal', appointment: 'Appointment', health: 'Health', task: 'Task', adventure: 'Adventure',
   };
   const STATUSES = ['open', 'done', 'slipped', 'dismissed'];
-  const VIEWS = ['day', 'week', 'week2', 'month', 'month2', 'month3', 'month6', 'year'];
+  const VIEWS = ['day', 'week', 'week2', 'month', 'month3', 'month6', 'year'];
   const DEFAULT_DURATION = 60;
   const DAY_MS = 86400000;
   const DEFAULT_SETTINGS = Object.freeze({
@@ -250,8 +250,6 @@
       }
       case 'month':
         return { start: startOfMonth(anchor), end: endOfMonth(anchor) };
-      case 'month2':
-        return { start: startOfMonth(anchor), end: endOfMonth(addMonths(startOfMonth(anchor), 1)) };
       case 'month3':
         return { start: startOfMonth(anchor), end: endOfMonth(addMonths(startOfMonth(anchor), 2)) };
       case 'month6':
@@ -266,7 +264,7 @@
   }
   // step the anchor one view-length; lands on today whenever today is in the new range
   function stepAnchor(view, anchor, dir, todayISO, weekStart) {
-    const months = { month: 1, month2: 2, month3: 3, month6: 6, year: 12 }[view];
+    const months = { month: 1, month3: 3, month6: 6, year: 12 }[view];
     let next;
     if (view === 'week') next = addDays(anchor, 7 * dir);
     else if (view === 'week2') next = addDays(anchor, 14 * dir);
@@ -816,7 +814,9 @@
     if (dd) s.defaultDuration = dd;
     const fm = cleanInt(r.focusMin, 1, 180);
     if (fm) s.focusMin = fm;
-    if (VIEWS.includes(r.view)) s.view = r.view;
+    // the 2 months view is gone: anyone who had it saved lands on Month
+    if (r.view === 'month2') s.view = 'month';
+    else if (VIEWS.includes(r.view)) s.view = r.view;
     if (r.filter === 'next' || r.filter === 'all') s.filter = r.filter;
     if (typeof r.full === 'boolean') s.full = r.full;
     return s;
